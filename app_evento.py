@@ -62,8 +62,17 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# CORREÇÃO AQUI: Removida a frase de "quanto mais gente melhor" para manter a exclusividade
-st.caption("ℹ️ O valor do rateio (divisão de custos) será definido com base no número de confirmados.")
+# --- DESTAQUE IMPORTANTE (RATEIO) ---
+# Aqui está a mudança: Um quadro HTML amarelo para chamar atenção
+st.markdown("""
+<div style='background-color: #FFF3CD; padding: 15px; border-radius: 10px; border: 1px solid #FFEEBA; text-align: center; margin-bottom: 20px;'>
+    <h3 style='color: #856404; margin:0; font-size: 22px;'>💰 IMPORTANTE SOBRE O VALOR</h3>
+    <p style='color: #856404; font-size: 18px; margin-top: 10px; line-height: 1.4;'>
+        O valor do rateio (divisão de custos) será definido com base no número de confirmados.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
 
 aba_convite, aba_admin = st.tabs(["✅ Confirmar Presença", "🔒 Área Administrativa"])
 
@@ -78,7 +87,7 @@ with aba_convite:
         
         st.write("---")
         
-        # CORREÇÃO AQUI: Formatação correta do preço (R$ 45,00)
+        # Formatação correta do preço
         preco_formatado = f"{PRECO_CAMISA:.2f}".replace(".", ",")
         st.markdown(f"#### 👕 Camisa Comemorativa 5 Anos (Aprox. R$ {preco_formatado})")
         
