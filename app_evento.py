@@ -5,7 +5,7 @@ from datetime import datetime
 import urllib.parse
 
 # --- CONFIGURAÇÃO INICIAL ---
-st.set_page_config(page_title="Barbearia Vasques - Evento", layout="centered", page_icon="💈")
+st.set_page_config(page_title="5 Anos - Barbearia Vasques", layout="centered", page_icon="💈")
 
 # --- CONFIGURAÇÕES DO DONO (EDITE AQUI) ---
 ARQUIVO_DADOS = 'lista_interessados.csv'
@@ -25,51 +25,65 @@ def salvar_dados(novo_dado):
     df.to_csv(ARQUIVO_DADOS, index=False)
 
 def gerar_link_whatsapp(nome, quer_camisa):
-    texto_camisa = "e vou querer a CAMISA Oficial!" if quer_camisa == "Sim" else "sem a camisa por enquanto."
-    mensagem = f"Fala Douglas! Aqui é o {nome}. Recebi o convite e confirmo minha presença no churras! {texto_camisa}"
+    texto_camisa = "e vou querer a CAMISA dos 5 Anos!" if quer_camisa == "Sim" else "sem a camisa por enquanto."
+    mensagem = f"Fala Douglas! Aqui é o {nome}. Recebi o convite dos 5 ANOS e confirmo minha presença! {texto_camisa}"
     mensagem_encoded = urllib.parse.quote(mensagem)
     return f"https://wa.me/{NUMERO_BARBEIRO}?text={mensagem_encoded}"
 
 # --- INTERFACE (FRONTEND) ---
 
-# Tenta carregar o logo se ele existir
-if os.path.exists("logo.png"):
-    st.image("logo.png", width=200)
-else:
-    st.title("💈 Barbearia Vasques")
+# --- CABEÇALHO (HEADER) PERSONALIZADO ---
+# Truque de colunas para centralizar o logo e deixá-lo maior
+col_esq, col_centro, col_dir = st.columns([1, 8, 1])
 
-st.markdown("## Confraternização Exclusiva")
+with col_centro:
+    if os.path.exists("logo.png"):
+        st.image("logo.png", use_container_width=True) # Deixa o logo grande e responsivo
+    
+    # Título centralizado com HTML para ficar bonito
+    st.markdown("""
+        <h1 style='text-align: center; color: #E67E22; margin-bottom: 0;'>
+            COMEMORAÇÃO DE 5 ANOS
+        </h1>
+        <h3 style='text-align: center; color: #555;'>
+            BARBEARIA VASQUES
+        </h3>
+        <hr>
+    """, unsafe_allow_html=True)
 
-# Mensagem Emocional (Copywriting)
+# Mensagem Emocional (Atualizada com os 5 anos)
 st.info("""
-**Você é parte da nossa história!** Se você recebeu este convite, saiba que é muito importante para nós. 
-A Barbearia Vasques não existiria sem a sua confiança. Obrigado por caminhar com a gente! 
-Vem curtir esse dia com a gente.
+**Você faz parte dessa história!** Se você recebeu este convite, saiba que é fundamental na nossa caminhada. 
+Esses 5 anos de Barbearia Vasques não existiriam sem a sua confiança. 
+Obrigado por estar com a gente. Vamos comemorar!
 """)
 
-st.write("---")
-st.markdown("### ☀️ Piscina • ⚽️ Futebol • 🍻 Chopp")
+st.markdown("""
+<div style="text-align: center; font-size: 1.2rem; margin-bottom: 20px;">
+    <b>☀️ Piscina • ⚽️ Futebol • 🍻 Chopp Gelado</b>
+</div>
+""", unsafe_allow_html=True)
+
 st.caption("O valor do rateio (divisão de custos) será definido com base no número de confirmados. Quanto mais gente, melhor!")
 
 aba_convite, aba_admin = st.tabs(["✅ Confirmar Presença", "🔒 Área Administrativa"])
 
 # --- ABA 1: CONVITE E INTERESSE ---
 with aba_convite:
-    st.write("### Garanta seu lugar na lista")
-    st.write("Preencha abaixo para recebermos sua intenção de ir. O pagamento será combinado posteriormente pelo WhatsApp.")
+    st.write("### Garanta seu lugar na festa")
+    st.write("Preencha abaixo para confirmar sua intenção de ir.")
     
     with st.form("form_interesse"):
         nome = st.text_input("Nome Completo")
         telefone = st.text_input("WhatsApp (com DDD)")
         
         st.write("---")
-        st.markdown(f"#### 👕 Camisa Oficial do Evento (Aprox. R$ {PRECO_CAMISA},00)")
+        st.markdown(f"#### 👕 Camisa Comemorativa 5 Anos (Aprox. R$ {PRECO_CAMISA},00)")
         
-        # Mudança para Radio Button (Obriga a escolha)
         opcao_camisa = st.radio(
             "Você deseja encomendar a camisa personalizada?",
             ["Sim, quero a camisa!", "Não, apenas o evento."],
-            index=None, # Começa sem nada marcado para forçar a leitura
+            index=None, 
             help="O valor da camisa é a parte do valor do rateio da chácara."
         )
         
@@ -92,7 +106,7 @@ with aba_convite:
                 # Gera Link do Zap
                 link_zap = gerar_link_whatsapp(nome, status_camisa)
                 
-                st.success(f"Show, {nome}! Sua pré-confirmação foi registrada.")
+                st.success(f"Show, {nome}! Parabéns por fazer parte desses 5 anos.")
                 st.markdown(f"""
                     <a href="{link_zap}" target="_blank">
                         <button style="
@@ -109,14 +123,14 @@ with aba_convite:
                             border-radius:8px; 
                             font-weight:bold;
                             width:100%;">
-                            📲 FINALIZAR NO WHATSAPP DO DOUGLAS
+                            📲 ENVIAR CONFIRMAÇÃO NO ZAP DO DOUGLAS
                         </button>
                     </a>
                     """, unsafe_allow_html=True)
                 st.caption("É obrigatório clicar no botão acima para avisar o barbeiro.")
                 
             else:
-                st.error("Por favor, preencha o Nome, Telefone e informe sobre a Camisa.")
+                st.error("Por favor, preencha todos os campos.")
 
 # --- ABA 2: CALCULADORA DO ORGANIZADOR ---
 with aba_admin:
@@ -126,7 +140,7 @@ with aba_admin:
     if senha == SENHA_ADMIN:
         df = carregar_dados()
         st.divider()
-        st.subheader("Painel Financeiro")
+        st.subheader("Painel Financeiro - 5 Anos")
         
         if not df.empty:
             total_pessoas = len(df)
