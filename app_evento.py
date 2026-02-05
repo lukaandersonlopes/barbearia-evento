@@ -24,6 +24,10 @@ def salvar_dados(novo_dado):
     df = pd.concat([df, pd.DataFrame([novo_dado])], ignore_index=True)
     df.to_csv(ARQUIVO_DADOS, index=False)
 
+# Nova função para salvar a tabela inteira (usada na edição/exclusão)
+def atualizar_lista_completa(df_novo):
+    df_novo.to_csv(ARQUIVO_DADOS, index=False)
+
 def gerar_link_whatsapp(nome, quer_camisa):
     texto_camisa = "e vou querer a CAMISA dos 5 Anos!" if quer_camisa == "Sim" else "sem a camisa por enquanto."
     mensagem = f"Fala Douglas! Aqui é o {nome}. Recebi o convite dos 5 ANOS e confirmo minha presença! {texto_camisa}"
@@ -63,7 +67,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- DESTAQUE IMPORTANTE (RATEIO) ---
-# Aqui está a mudança: Um quadro HTML amarelo para chamar atenção
 st.markdown("""
 <div style='background-color: #FFF3CD; padding: 15px; border-radius: 10px; border: 1px solid #FFEEBA; text-align: center; margin-bottom: 20px;'>
     <h3 style='color: #856404; margin:0; font-size: 22px;'>💰 IMPORTANTE SOBRE O VALOR</h3>
@@ -181,7 +184,22 @@ with aba_admin:
                 st.warning("Aguardando confirmações para calcular...")
             
             st.divider()
-            st.write("### Lista Completa")
-            st.dataframe(df)
+            st.write("### Lista de Convidados (Editável)")
+            st.caption("Para excluir: Selecione a linha e clique no ícone de lixeira. DEPOIS CLIQUE EM SALVAR.")
+            
+            # Tabela Editável
+            df_editavel = st.data_editor(
+                df, 
+                num_rows="dynamic", # Permite adicionar e excluir linhas
+                use_container_width=True,
+                key="editor_dados"
+            )
+            
+            # Botão Obrigatório para Salvar
+            if st.button("💾 Salvar Alterações na Lista"):
+                atualizar_lista_completa(df_editavel)
+                st.success("Lista atualizada com sucesso!")
+                st.rerun() # Recarrega a página para atualizar os gráficos
+                
         else:
             st.info("A lista está vazia.")
