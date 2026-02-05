@@ -5,13 +5,12 @@ from datetime import datetime
 import urllib.parse
 
 # --- CONFIGURAÇÃO INICIAL ---
-st.set_page_config(page_title="Churras da Barbearia", layout="centered", page_icon="💈")
+st.set_page_config(page_title="Barbearia Vasques - Evento", layout="centered", page_icon="💈")
 
 # --- CONFIGURAÇÕES DO DONO (EDITE AQUI) ---
 ARQUIVO_DADOS = 'lista_interessados.csv'
 SENHA_ADMIN = "barba123"
-# COLOQUE O NUMERO DO DOUGLAS ABAIXO (Mantenha o 55 e o DDD)
-NUMERO_BARBEIRO = "5519998057890" 
+NUMERO_BARBEIRO = "5519999999999" # SEU NÚMERO AQUI
 PRECO_CAMISA = 45.00
 
 # --- FUNÇÕES (BACKEND) ---
@@ -26,40 +25,60 @@ def salvar_dados(novo_dado):
     df.to_csv(ARQUIVO_DADOS, index=False)
 
 def gerar_link_whatsapp(nome, quer_camisa):
-    texto_camisa = "e tenho interesse na CAMISA também!" if quer_camisa == "Sim" else "sem a camisa por enquanto."
-    mensagem = f"Fala Douglas! Aqui é o {nome}. Tô confirmando meu interesse no churras da barbearia {texto_camisa}"
+    texto_camisa = "e vou querer a CAMISA Oficial!" if quer_camisa == "Sim" else "sem a camisa por enquanto."
+    mensagem = f"Fala Douglas! Aqui é o {nome}. Recebi o convite e confirmo minha presença no churras! {texto_camisa}"
     mensagem_encoded = urllib.parse.quote(mensagem)
     return f"https://wa.me/{NUMERO_BARBEIRO}?text={mensagem_encoded}"
 
 # --- INTERFACE (FRONTEND) ---
 
-st.title("💈 Churras & Resenha da Barbearia")
-st.markdown("### ☀️ Piscina, Futebol e aquele Chopp Gelado!")
-st.info("ℹ️ **Como vai funcionar:** Estamos organizando a galera. O valor do rateio (divisão dos custos) vai depender de quantos confirmarem. Confirme abaixo para entrar na lista!")
+# Tenta carregar o logo se ele existir
+if os.path.exists("logo.png"):
+    st.image("logo.png", width=200)
+else:
+    st.title("💈 Barbearia Vasques")
 
-aba_convite, aba_admin = st.tabs(["📝 Lista de Interesse", "📊 Área do Douglas (Admin)"])
+st.markdown("## Confraternização Exclusiva")
+
+# Mensagem Emocional (Copywriting)
+st.info("""
+**Você é parte da nossa história!** Se você recebeu este convite, saiba que é muito importante para nós. 
+A Barbearia Vasques não existiria sem a sua confiança. Obrigado por caminhar com a gente! 
+Vem curtir esse dia com a gente.
+""")
+
+st.write("---")
+st.markdown("### ☀️ Piscina • ⚽️ Futebol • 🍻 Chopp")
+st.caption("O valor do rateio (divisão de custos) será definido com base no número de confirmados. Quanto mais gente, melhor!")
+
+aba_convite, aba_admin = st.tabs(["✅ Confirmar Presença", "🔒 Área Administrativa"])
 
 # --- ABA 1: CONVITE E INTERESSE ---
 with aba_convite:
-    st.write("---")
-    st.write("### Quem vamos?")
-    st.write("O plano: Aluguel da chácara + Chopp/Refri inclusos.")
-    st.caption("*Obs: Cada um leva seu kit churrasco (sua carne de preferência).*")
+    st.write("### Garanta seu lugar na lista")
+    st.write("Preencha abaixo para recebermos sua intenção de ir. O pagamento será combinado posteriormente pelo WhatsApp.")
     
     with st.form("form_interesse"):
-        nome = st.text_input("Seu Nome ou Apelido")
-        telefone = st.text_input("Seu WhatsApp")
+        nome = st.text_input("Nome Completo")
+        telefone = st.text_input("WhatsApp (com DDD)")
         
         st.write("---")
-        st.write("👕 **Camisa Oficial do Evento**")
-        st.write(f"Quer garantir a peita personalizada da barbearia? (Aprox. R$ {PRECO_CAMISA},00)")
-        opcao_camisa = st.checkbox("Sim, eu quero a camisa!")
+        st.markdown(f"#### 👕 Camisa Oficial do Evento (Aprox. R$ {PRECO_CAMISA},00)")
         
-        enviado = st.form_submit_button("✅ Confirmar Interesse")
+        # Mudança para Radio Button (Obriga a escolha)
+        opcao_camisa = st.radio(
+            "Você deseja encomendar a camisa personalizada?",
+            ["Sim, quero a camisa!", "Não, apenas o evento."],
+            index=None, # Começa sem nada marcado para forçar a leitura
+            help="O valor da camisa é a parte do valor do rateio da chácara."
+        )
+        
+        st.write("")
+        enviado = st.form_submit_button("Confirmar Presença")
         
         if enviado:
-            if nome and telefone:
-                status_camisa = "Sim" if opcao_camisa else "Não"
+            if nome and telefone and opcao_camisa:
+                status_camisa = "Sim" if "Sim" in opcao_camisa else "Não"
                 
                 # Salva os dados
                 novo_registro = {
@@ -73,7 +92,7 @@ with aba_convite:
                 # Gera Link do Zap
                 link_zap = gerar_link_whatsapp(nome, status_camisa)
                 
-                st.success(f"Boa, {nome}! Você está na lista.")
+                st.success(f"Show, {nome}! Sua pré-confirmação foi registrada.")
                 st.markdown(f"""
                     <a href="{link_zap}" target="_blank">
                         <button style="
@@ -90,24 +109,24 @@ with aba_convite:
                             border-radius:8px; 
                             font-weight:bold;
                             width:100%;">
-                            📲 ENVIAR CONFIRMAÇÃO NO ZAP DO DOUGLAS
+                            📲 FINALIZAR NO WHATSAPP DO DOUGLAS
                         </button>
                     </a>
                     """, unsafe_allow_html=True)
-                st.caption("Clique acima para avisar o Douglas e entrar na Lista de Transmissão.")
+                st.caption("É obrigatório clicar no botão acima para avisar o barbeiro.")
                 
             else:
-                st.error("Preencha nome e telefone, pô!")
+                st.error("Por favor, preencha o Nome, Telefone e informe sobre a Camisa.")
 
 # --- ABA 2: CALCULADORA DO ORGANIZADOR ---
 with aba_admin:
-    st.write("🔐 Acesso Restrito")
-    senha = st.text_input("Senha", type="password")
+    st.write("Acesso Restrito à Organização")
+    senha = st.text_input("Senha de Acesso", type="password")
     
     if senha == SENHA_ADMIN:
         df = carregar_dados()
         st.divider()
-        st.subheader("🧮 Calculadora de Rateio")
+        st.subheader("Painel Financeiro")
         
         if not df.empty:
             total_pessoas = len(df)
@@ -115,12 +134,11 @@ with aba_admin:
             
             # Métricas
             col1, col2 = st.columns(2)
-            col1.metric("Interessados", total_pessoas)
-            col2.metric("Querem Camisa", total_camisas)
+            col1.metric("Total Confirmados", total_pessoas)
+            col2.metric("Camisas Pedidas", total_camisas)
             
             st.write("---")
-            st.write("### Simulação de Custos")
-            st.caption("Ajuste os valores abaixo para saber quanto cobrar por pessoa.")
+            st.write("### 🧮 Simulador de Rateio")
             
             custo_chacara = st.number_input("Custo da Chácara (R$)", value=1500.0)
             custo_bebida = st.number_input("Custo Bebida/Extras (R$)", value=300.0)
@@ -129,24 +147,19 @@ with aba_admin:
             if total_pessoas > 0:
                 custo_por_cabeca = custo_total_festa / total_pessoas
                 
-                st.info(f"💰 Custo Total da Festa: **R$ {custo_total_festa:.2f}**")
+                st.success(f"Custo Total: R$ {custo_total_festa:.2f}")
                 
                 st.markdown(f"""
-                ### 🎯 Valor SUGERIDO por pessoa:
+                ### Valor SUGERIDO por pessoa:
                 # R$ {custo_por_cabeca:.2f}
-                <small>(Apenas para Chácara + Bebida)</small>
+                <small>(Sem contar a camisa)</small>
                 """, unsafe_allow_html=True)
                 
-                st.write("---")
-                st.markdown("#### Tabela de Preços para o Cliente:")
-                st.text(f"🎟️ Ingresso Simples: R$ {custo_por_cabeca:.2f}")
-                st.text(f"👕 Ingresso + Camisa: R$ {custo_por_cabeca + PRECO_CAMISA:.2f}")
-                
             else:
-                st.warning("Precisa de gente na lista para calcular o rateio!")
+                st.warning("Aguardando confirmações para calcular...")
             
             st.divider()
-            st.write("### Lista de Nomes")
+            st.write("### Lista Completa")
             st.dataframe(df)
         else:
-            st.info("Ninguém na lista ainda.")
+            st.info("A lista está vazia.")
