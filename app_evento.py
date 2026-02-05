@@ -33,14 +33,12 @@ def gerar_link_whatsapp(nome, quer_camisa):
 # --- INTERFACE (FRONTEND) ---
 
 # --- CABEÇALHO (HEADER) PERSONALIZADO ---
-# Truque de colunas para centralizar o logo e deixá-lo maior
 col_esq, col_centro, col_dir = st.columns([1, 8, 1])
 
 with col_centro:
     if os.path.exists("logo.png"):
-        st.image("logo.png", use_container_width=True) # Deixa o logo grande e responsivo
+        st.image("logo.png", use_container_width=True)
     
-    # Título centralizado com HTML para ficar bonito
     st.markdown("""
         <h1 style='text-align: center; color: #E67E22; margin-bottom: 0;'>
             COMEMORAÇÃO DE 5 ANOS
@@ -51,7 +49,7 @@ with col_centro:
         <hr>
     """, unsafe_allow_html=True)
 
-# Mensagem Emocional (Atualizada com os 5 anos)
+# Mensagem Emocional
 st.info("""
 **Você faz parte dessa história!** Se você recebeu este convite, saiba que é fundamental na nossa caminhada. 
 Esses 5 anos de Barbearia Vasques não existiriam sem a sua confiança. 
@@ -64,7 +62,8 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.caption("O valor do rateio (divisão de custos) será definido com base no número de confirmados. Quanto mais gente, melhor!")
+# CORREÇÃO AQUI: Removida a frase de "quanto mais gente melhor" para manter a exclusividade
+st.caption("ℹ️ O valor do rateio (divisão de custos) será definido com base no número de confirmados.")
 
 aba_convite, aba_admin = st.tabs(["✅ Confirmar Presença", "🔒 Área Administrativa"])
 
@@ -78,7 +77,10 @@ with aba_convite:
         telefone = st.text_input("WhatsApp (com DDD)")
         
         st.write("---")
-        st.markdown(f"#### 👕 Camisa Comemorativa 5 Anos (Aprox. R$ {PRECO_CAMISA},00)")
+        
+        # CORREÇÃO AQUI: Formatação correta do preço (R$ 45,00)
+        preco_formatado = f"{PRECO_CAMISA:.2f}".replace(".", ",")
+        st.markdown(f"#### 👕 Camisa Comemorativa 5 Anos (Aprox. R$ {preco_formatado})")
         
         opcao_camisa = st.radio(
             "Você deseja encomendar a camisa personalizada?",
@@ -94,7 +96,6 @@ with aba_convite:
             if nome and telefone and opcao_camisa:
                 status_camisa = "Sim" if "Sim" in opcao_camisa else "Não"
                 
-                # Salva os dados
                 novo_registro = {
                     "Nome": nome,
                     "Telefone": telefone,
@@ -103,7 +104,6 @@ with aba_convite:
                 }
                 salvar_dados(novo_registro)
                 
-                # Gera Link do Zap
                 link_zap = gerar_link_whatsapp(nome, status_camisa)
                 
                 st.success(f"Show, {nome}! Parabéns por fazer parte desses 5 anos.")
@@ -146,7 +146,6 @@ with aba_admin:
             total_pessoas = len(df)
             total_camisas = len(df[df["Quer_Camisa"] == "Sim"])
             
-            # Métricas
             col1, col2 = st.columns(2)
             col1.metric("Total Confirmados", total_pessoas)
             col2.metric("Camisas Pedidas", total_camisas)
@@ -177,4 +176,3 @@ with aba_admin:
             st.dataframe(df)
         else:
             st.info("A lista está vazia.")
-
