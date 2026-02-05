@@ -10,7 +10,7 @@ st.set_page_config(page_title="5 Anos - Barbearia Vasques", layout="centered", p
 # --- CONFIGURAÇÕES DO DONO (EDITE AQUI) ---
 ARQUIVO_DADOS = 'lista_interessados.csv'
 SENHA_ADMIN = "barba123"
-NUMERO_BARBEIRO = "5519999999999" # SEU NÚMERO AQUI
+NUMERO_BARBEIRO = "5519998057890" # SEU NÚMERO AQUI
 PRECO_CAMISA = 45.00
 
 # --- FUNÇÕES (BACKEND) ---
@@ -177,3 +177,4 @@ with aba_admin:
             st.dataframe(df)
         else:
             st.info("A lista está vazia.")
+
