@@ -5,8 +5,7 @@ from datetime import datetime
 import urllib.parse
 
 # --- CONFIGURAÇÃO INICIAL ---
-st.set_page_config(page_title="5 Anos - Financeiro", layout="wide", page_icon="💈") 
-# Mudei layout para "wide" para caber a tabela financeira
+st.set_page_config(page_title="5 Anos - Financeiro", layout="wide", page_icon="💈")
 
 # --- CONFIGURAÇÕES DO DONO (EDITE AQUI) ---
 ARQUIVO_DADOS = 'lista_interessados.csv'
@@ -16,24 +15,39 @@ PRECO_CAMISA = 45.00
 
 # --- FUNÇÕES (BACKEND) ---
 def carregar_dados():
-    # Colunas padrão que o sistema precisa
     colunas_padrao = [
         "Nome", "Telefone", "Quer_Camisa", "Data_Confirmacao", 
         "Status_Pagamento", "Forma_Pagamento", "Parcelamento", "Valor_Ja_Pago", "Observacoes"
     ]
     
+    # Se não existir arquivo, cria zerado
     if not os.path.exists(ARQUIVO_DADOS):
         return pd.DataFrame(columns=colunas_padrao)
     
-    df = pd.read_csv(ARQUIVO_DADOS)
+    try:
+        df = pd.read_csv(ARQUIVO_DADOS)
+    except:
+        return pd.DataFrame(columns=colunas_padrao) # Se o arquivo estiver corrompido, cria novo
     
-    # Verifica se faltam colunas novas (caso venha de uma versão anterior) e cria elas
+    # GARANTE QUE TODAS AS COLUNAS EXISTAM
     for col in colunas_padrao:
         if col not in df.columns:
-            df[col] = "" # Cria a coluna vazia
-            if col == "Valor_Ja_Pago":
-                df[col] = 0.0 # Garante que seja número
-                
+            df[col] = "" 
+    
+    # --- FAXINA DE DADOS (CORREÇÃO DE ERRO) ---
+    # Força a coluna de valor a ser número (substitui erro por 0.0)
+    df["Valor_Ja_Pago"] = pd.to_numeric(df["Valor_Ja_Pago"], errors='coerce').fillna(0.0)
+    
+    # Garante que não tenha valores nulos nas colunas de texto
+    df["Status_Pagamento"] = df["Status_Pagamento"].fillna("Pendente").replace("", "Pendente")
+    df["Forma_Pagamento"] = df["Forma_Pagamento"].fillna("-").replace("", "-")
+    df["Parcelamento"] = df["Parcelamento"].fillna("-").replace("", "-")
+    df["Observacoes"] = df["Observacoes"].fillna("")
+    
+    # Garante que o status seja um dos permitidos (se não for, vira Pendente)
+    opcoes_validas = ["Pendente", "Em Aberto", "Quitado"]
+    df.loc[~df["Status_Pagamento"].isin(opcoes_validas), "Status_Pagamento"] = "Pendente"
+
     return df
 
 def atualizar_lista_completa(df_novo):
@@ -41,7 +55,6 @@ def atualizar_lista_completa(df_novo):
 
 def salvar_novo_inscrito(novo_dado):
     df = carregar_dados()
-    # Adiciona campos vazios de pagamento para o novo inscrito
     novo_dado["Status_Pagamento"] = "Pendente"
     novo_dado["Forma_Pagamento"] = "-"
     novo_dado["Parcelamento"] = "-"
@@ -67,10 +80,8 @@ with col_centro:
     st.markdown("<h1 style='text-align: center; color: #E67E22; margin: 0;'>COMEMORAÇÃO DE 5 ANOS</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align: center; color: #555;'>BARBEARIA VASQUES</h3><hr>", unsafe_allow_html=True)
 
-# Aviso Público
 st.info("**Você faz parte dessa história!** Esses 5 anos não existiriam sem você. Vamos comemorar!")
 
-# Destaque Rateio
 st.markdown("""
 <div style='background-color: #FFF3CD; padding: 10px; border-radius: 10px; border: 1px solid #FFEEBA; text-align: center; margin-bottom: 20px;'>
     <h4 style='color: #856404; margin:0;'>💰 IMPORTANTE: O valor do rateio depende do número de confirmados.</h4>
@@ -116,7 +127,7 @@ with aba_admin:
         df = carregar_dados()
         st.divider()
         
-        # --- BLOCO 1: CALCULADORA DE RATEIO ---
+        # --- BLOCO 1: CALCULADORA ---
         st.subheader("1. Definição de Preço (Rateio)")
         col_custo1, col_custo2, col_result = st.columns(3)
         custo_chacara = col_custo1.number_input("Custo Chácara", value=1500.0)
@@ -131,22 +142,20 @@ with aba_admin:
 
         st.divider()
 
-        # --- BLOCO 2: SIMULADOR DE PARCELAS ---
-        st.subheader("2. Simulador de Parcelamento (Balcão)")
+        # --- BLOCO 2: SIMULADOR ---
+        st.subheader("2. Simulador de Parcelamento")
         with st.expander("🧮 Abrir Calculadora de Parcelas"):
             c1, c2, c3 = st.columns(3)
             val_total = c1.number_input("Valor a cobrar (R$)", value=100.0)
             qtd_parc = c2.number_input("Qtd Parcelas", min_value=1, max_value=12, value=3)
             val_parc = val_total / qtd_parc
             c3.metric(f"Valor da Parcela ({qtd_parc}x)", f"R$ {val_parc:.2f}")
-            st.caption("Use isso para combinar com o cliente na hora.")
 
         st.divider()
 
-        # --- BLOCO 3: FLUXO DE CAIXA (TABELA) ---
+        # --- BLOCO 3: FLUXO DE CAIXA ---
         st.subheader("3. Controle de Pagamentos")
         
-        # Métricas Financeiras
         total_recebido = df["Valor_Ja_Pago"].sum()
         pagantes_quitados = len(df[df["Status_Pagamento"] == "Quitado"])
         
@@ -156,7 +165,7 @@ with aba_admin:
         m3.metric("📝 Total na Lista", total_pessoas)
 
         st.write("### Lista de Convidados & Financeiro")
-        st.info("Edite os pagamentos abaixo e clique em SALVAR no final.")
+        st.caption("Edite os pagamentos abaixo e clique em SALVAR no final.")
         
         # Tabela Super Editável
         df_editavel = st.data_editor(
@@ -165,7 +174,7 @@ with aba_admin:
             num_rows="dynamic",
             use_container_width=True,
             column_config={
-                "Nome": st.column_config.TextColumn("Nome", disabled=True), # Nome travado pra evitar erro
+                "Nome": st.column_config.TextColumn("Nome", disabled=True),
                 "Quer_Camisa": st.column_config.TextColumn("Camisa?", disabled=True, width="small"),
                 
                 "Status_Pagamento": st.column_config.SelectboxColumn(
