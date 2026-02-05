@@ -15,39 +15,35 @@ PRECO_CAMISA = 45.00
 
 # --- FUNÇÕES (BACKEND) ---
 def carregar_dados():
+    # ADICIONADA A COLUNA "Tamanho_Camisa"
     colunas_padrao = [
-        "Nome", "Telefone", "Quer_Camisa", "Data_Confirmacao", 
+        "Nome", "Telefone", "Quer_Camisa", "Tamanho_Camisa", "Data_Confirmacao", 
         "Status_Pagamento", "Forma_Pagamento", "Parcelamento", "Valor_Ja_Pago", "Observacoes"
     ]
     
-    # Se não existir arquivo, cria zerado
     if not os.path.exists(ARQUIVO_DADOS):
         return pd.DataFrame(columns=colunas_padrao)
     
     try:
         df = pd.read_csv(ARQUIVO_DADOS)
     except:
-        return pd.DataFrame(columns=colunas_padrao) # Se o arquivo estiver corrompido, cria novo
+        return pd.DataFrame(columns=colunas_padrao)
     
-    # GARANTE QUE TODAS AS COLUNAS EXISTAM
+    # Cria colunas faltantes (pra não quebrar versões antigas)
     for col in colunas_padrao:
         if col not in df.columns:
             df[col] = "" 
     
-    # --- FAXINA DE DADOS (CORREÇÃO DE ERRO) ---
-    # Força a coluna de valor a ser número (substitui erro por 0.0)
+    # --- FAXINA DE DADOS ---
     df["Valor_Ja_Pago"] = pd.to_numeric(df["Valor_Ja_Pago"], errors='coerce').fillna(0.0)
     
-    # Garante que não tenha valores nulos nas colunas de texto
+    # Preenche vazios
     df["Status_Pagamento"] = df["Status_Pagamento"].fillna("Pendente").replace("", "Pendente")
     df["Forma_Pagamento"] = df["Forma_Pagamento"].fillna("-").replace("", "-")
     df["Parcelamento"] = df["Parcelamento"].fillna("-").replace("", "-")
     df["Observacoes"] = df["Observacoes"].fillna("")
+    df["Tamanho_Camisa"] = df["Tamanho_Camisa"].fillna("-").replace("", "-") # Limpeza do tamanho
     
-    # Garante que o status seja um dos permitidos (se não for, vira Pendente)
-    opcoes_validas = ["Pendente", "Em Aberto", "Quitado"]
-    df.loc[~df["Status_Pagamento"].isin(opcoes_validas), "Status_Pagamento"] = "Pendente"
-
     return df
 
 def atualizar_lista_completa(df_novo):
@@ -55,17 +51,25 @@ def atualizar_lista_completa(df_novo):
 
 def salvar_novo_inscrito(novo_dado):
     df = carregar_dados()
+    # Preenche campos financeiros com padrão
     novo_dado["Status_Pagamento"] = "Pendente"
     novo_dado["Forma_Pagamento"] = "-"
     novo_dado["Parcelamento"] = "-"
     novo_dado["Valor_Ja_Pago"] = 0.0
     novo_dado["Observacoes"] = ""
+    # Se não tiver tamanho (caso não queira camisa), garante que não quebre
+    if "Tamanho_Camisa" not in novo_dado:
+        novo_dado["Tamanho_Camisa"] = "-"
     
     df = pd.concat([df, pd.DataFrame([novo_dado])], ignore_index=True)
     df.to_csv(ARQUIVO_DADOS, index=False)
 
-def gerar_link_whatsapp(nome, quer_camisa):
-    texto_camisa = "e vou querer a CAMISA dos 5 Anos!" if quer_camisa == "Sim" else "sem a camisa por enquanto."
+def gerar_link_whatsapp(nome, quer_camisa, tamanho):
+    if quer_camisa == "Sim":
+        texto_camisa = f"e vou querer a CAMISA dos 5 Anos (Tamanho {tamanho})!"
+    else:
+        texto_camisa = "sem a camisa por enquanto."
+        
     mensagem = f"Fala Douglas! Aqui é o {nome}. Recebi o convite dos 5 ANOS e confirmo minha presença! {texto_camisa}"
     mensagem_encoded = urllib.parse.quote(mensagem)
     return f"https://wa.me/{NUMERO_BARBEIRO}?text={mensagem_encoded}"
@@ -100,23 +104,39 @@ with aba_convite:
         
         preco_formatado = f"{PRECO_CAMISA:.2f}".replace(".", ",")
         st.markdown(f"#### 👕 Camisa Comemorativa (Aprox. R$ {preco_formatado})")
+        
+        # Lógica Condicional: Radio Button
         opcao_camisa = st.radio("Deseja a camisa?", ["Sim, quero a camisa!", "Não, apenas o evento."], index=None)
+        
+        # Campo condicional de Tamanho (Só aparece se escolher Sim)
+        tamanho_selecionado = "-"
+        if opcao_camisa == "Sim, quero a camisa!":
+            tamanho_selecionado = st.selectbox("Qual o tamanho?", ["P", "M", "G", "GG", "G1", "G2"])
         
         if st.form_submit_button("Confirmar Presença"):
             if nome and telefone and opcao_camisa:
                 status_camisa = "Sim" if "Sim" in opcao_camisa else "Não"
-                novo_registro = {
-                    "Nome": nome, 
-                    "Telefone": telefone, 
-                    "Quer_Camisa": status_camisa, 
-                    "Data_Confirmacao": datetime.now().strftime("%Y-%m-%d %H:%M")
-                }
-                salvar_novo_inscrito(novo_registro)
-                link_zap = gerar_link_whatsapp(nome, status_camisa)
-                st.success(f"Show, {nome}! Registrado.")
-                st.markdown(f'<a href="{link_zap}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px 20px; border-radius:5px; width:100%; font-weight:bold;">📲 AVISAR NO WHATSAPP</button></a>', unsafe_allow_html=True)
+                
+                # Validação extra: Se quer camisa, TEM que escolher tamanho
+                if status_camisa == "Sim" and (not tamanho_selecionado or tamanho_selecionado == "-"):
+                     st.error("Por favor, selecione o tamanho da camisa!")
+                else:
+                    novo_registro = {
+                        "Nome": nome, 
+                        "Telefone": telefone, 
+                        "Quer_Camisa": status_camisa, 
+                        "Tamanho_Camisa": tamanho_selecionado, # Salva o tamanho
+                        "Data_Confirmacao": datetime.now().strftime("%Y-%m-%d %H:%M")
+                    }
+                    salvar_novo_inscrito(novo_registro)
+                    
+                    # Link agora leva o tamanho
+                    link_zap = gerar_link_whatsapp(nome, status_camisa, tamanho_selecionado)
+                    
+                    st.success(f"Show, {nome}! Registrado.")
+                    st.markdown(f'<a href="{link_zap}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px 20px; border-radius:5px; width:100%; font-weight:bold;">📲 AVISAR NO WHATSAPP</button></a>', unsafe_allow_html=True)
             else:
-                st.error("Preencha tudo!")
+                st.error("Preencha todos os campos obrigatórios!")
 
 # --- ABA 2: FINANCEIRO E GESTÃO ---
 with aba_admin:
@@ -176,6 +196,14 @@ with aba_admin:
             column_config={
                 "Nome": st.column_config.TextColumn("Nome", disabled=True),
                 "Quer_Camisa": st.column_config.TextColumn("Camisa?", disabled=True, width="small"),
+                
+                # NOVA COLUNA DE TAMANHO NA TABELA
+                "Tamanho_Camisa": st.column_config.SelectboxColumn(
+                    "Tam.",
+                    options=["-", "P", "M", "G", "GG", "G1", "G2"],
+                    width="small",
+                    help="Tamanho da Camisa"
+                ),
                 
                 "Status_Pagamento": st.column_config.SelectboxColumn(
                     "Status",
