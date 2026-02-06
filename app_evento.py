@@ -5,54 +5,53 @@ import urllib.parse
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
-import os # IMPORTANTE: Mantido para não dar erro
+import os
+import base64 # Nova ferramenta para centralizar o logo
 
-# --- CONFIGURAÇÃO INICIAL (LAYOUT WIDE) ---
+# --- CONFIGURAÇÃO INICIAL ---
 st.set_page_config(page_title="5 Anos Barbearia Vasques", layout="wide", page_icon="💈")
 
-# --- CSS PERSONALIZADO (A MÁGICA DO DESIGN) ---
+# --- CSS PERSONALIZADO ---
 st.markdown("""
 <style>
-    /* Centraliza imagens */
-    .stImage {
-        display: flex;
-        justify-content: center;
-    }
-    
     /* Estilo dos Cards de Atrações */
     .card-container {
         display: flex;
-        justify-content: space-between;
-        gap: 10px;
+        justify-content: center; /* Centraliza os cards no container */
+        gap: 20px; /* Espaço entre os cards */
         margin-bottom: 20px;
     }
     .card {
-        background-color: #262730; /* Cor de fundo do card (cinza escuro) */
-        border: 1px solid #E67E22; /* Borda laranja fina */
+        background-color: #262730;
+        border: 1px solid #E67E22;
         border-radius: 10px;
-        padding: 15px;
+        padding: 20px;
         text-align: center;
-        width: 32%; /* Ocupa 1/3 da linha */
+        width: 150px; /* Largura fixa para ficarem iguais */
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         transition: transform 0.2s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
     }
     .card:hover {
-        transform: scale(1.05); /* Efeito de zoom leve ao passar o mouse */
+        transform: scale(1.05);
         border-color: #FF9F43;
     }
     .card-icon {
-        font-size: 2rem;
-        margin-bottom: 5px;
-        display: block;
+        font-size: 2.5rem;
+        margin-bottom: 10px;
     }
     .card-text {
         color: #FFF;
         font-weight: bold;
-        font-size: 1.1rem;
+        font-size: 1rem;
         text-transform: uppercase;
+        line-height: 1.2;
     }
     
-    /* Ajuste do Banner de Data */
+    /* Banner de Data */
     .date-banner {
         background: linear-gradient(90deg, #1E1E1E 0%, #2D2D2D 100%);
         color: white;
@@ -61,6 +60,7 @@ st.markdown("""
         text-align: center;
         margin: 25px 0;
         border-left: 5px solid #E67E22;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -71,6 +71,11 @@ SENHA_ADMIN = "barba123"
 NUMERO_BARBEIRO = "5519998057890"
 PRECO_CAMISA = 45.00
 DATA_EVENTO = date(2026, 7, 12)
+
+# --- FUNÇÃO PARA CENTRALIZAR IMAGEM (A Mágica) ---
+def get_base64_image(image_path):
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode()
 
 # --- CONEXÃO COM GOOGLE SHEETS ---
 def conectar_google_sheets():
@@ -95,14 +100,11 @@ def carregar_dados():
 
     colunas_padrao = ["Nome", "Telefone", "Quer_Camisa", "Tamanho_Camisa", "Data_Confirmacao", "Status_Pagamento", "Forma_Pagamento", "Parcelamento", "Valor_Ja_Pago", "Observacoes"]
     
-    if df.empty: 
-        return pd.DataFrame(columns=colunas_padrao)
+    if df.empty: return pd.DataFrame(columns=colunas_padrao)
     
     for col in colunas_padrao:
-        if col not in df.columns:
-            df[col] = ""
+        if col not in df.columns: df[col] = ""
 
-    # BLINDAGEM DE DADOS (Correção de erros numéricos)
     if "Valor_Ja_Pago" in df.columns:
         df["Valor_Ja_Pago"] = df["Valor_Ja_Pago"].astype(str).str.replace('R$', '', regex=False).str.replace(',', '.', regex=False)
         df["Valor_Ja_Pago"] = pd.to_numeric(df["Valor_Ja_Pago"], errors='coerce').fillna(0.0)
@@ -125,24 +127,31 @@ def gerar_link_whatsapp(nome, quer_camisa, tamanho):
     mensagem = f"Fala Douglas! Aqui é o {nome}. Confirmo presença no dia 12/07! {texto_camisa}"
     return f"https://wa.me/{NUMERO_BARBEIRO}?text={urllib.parse.quote(mensagem)}"
 
-# --- INTERFACE (LAYOUT CENTRALIZADO) ---
-# Usamos colunas para focar o conteúdo no centro da tela (Mobile Friendly)
+# --- INTERFACE ---
 col_vazia_esq, col_principal, col_vazia_dir = st.columns([1, 2, 1])
 
 with col_principal:
-    # 1. LOGO (Centralizado via CSS e maior)
+    # 1. LOGO 100% CENTRALIZADO (Via HTML/Base64)
     if os.path.exists("logo.png"):
-        st.image("logo.png", width=300) # AUMENTADO PARA 300px
+        img_base64 = get_base64_image("logo.png")
+        st.markdown(
+            f"""
+            <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+                <img src="data:image/png;base64,{img_base64}" width="300" style="border-radius: 10px;">
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
     
     # 2. TÍTULOS
     st.markdown("""
-        <div style='text-align: center; margin-top: 10px;'>
+        <div style='text-align: center;'>
             <h1 style='color: #E67E22; margin: 0; font-size: 3rem; text-transform: uppercase;'>5 ANOS DE HISTÓRIA</h1>
             <h3 style='color: #888; margin-top: 5px; letter-spacing: 2px;'>BARBEARIA VASQUES</h3>
         </div>
     """, unsafe_allow_html=True)
 
-    # 3. BANNER DE DATA (Novo Design)
+    # 3. BANNER DE DATA
     dias_restantes = (DATA_EVENTO - date.today()).days
     st.markdown(f"""
         <div class="date-banner">
@@ -151,7 +160,7 @@ with col_principal:
         </div>
     """, unsafe_allow_html=True)
 
-    # 4. CARDS DE ATRAÇÕES (Aqui está a grande mudança!)
+    # 4. CARDS DE ATRAÇÕES (Atualizado: Só "Futebol")
     st.markdown("""
         <div class="card-container">
             <div class="card">
@@ -160,7 +169,7 @@ with col_principal:
             </div>
             <div class="card">
                 <span class="card-icon">⚽️</span>
-                <span class="card-text">Futebol<br>Society</span>
+                <span class="card-text">Futebol</span>
             </div>
             <div class="card">
                 <span class="card-icon">🍻</span>
@@ -172,7 +181,7 @@ with col_principal:
     # 5. MENSAGEM
     st.info("🤝 **Você faz parte dessa história!** A Barbearia Vasques conta com sua presença para celebrar essa conquista.")
 
-    # 6. AVISO FINANCEIRO
+    # 6. AVISO
     st.markdown("""
     <div style='background-color: #FFF3CD; padding: 15px; border-radius: 10px; border: 1px solid #FFEEBA; text-align: center; margin-bottom: 20px;'>
         <h4 style='color: #856404; margin:0 0 10px 0;'>⚠️ IMPORTANTE</h4>
@@ -215,7 +224,7 @@ with col_principal:
                 else:
                     st.error("Preencha todos os campos!")
 
-# --- ABA 2: FINANCEIRO (FORA DA COLUNA PARA TER ESPAÇO) ---
+# --- ABA 2: FINANCEIRO ---
 st.write("---")
 with aba_admin:
     col_vazia, col_senha, col_vazia2 = st.columns([1, 1, 1])
@@ -251,8 +260,6 @@ with aba_admin:
             m1.metric("💰 Total Recebido", f"R$ {recebido:.2f}")
             m2.metric("👥 Total Confirmados", qtd)
             
-            st.caption("Qualquer alteração feita abaixo vai direto para o Google.")
-            
             col_config = {
                 "Nome": st.column_config.TextColumn("Nome", disabled=True),
                 "Quer_Camisa": st.column_config.TextColumn("Camisa?", disabled=True, width="small"),
@@ -264,17 +271,10 @@ with aba_admin:
                 "Observacoes": st.column_config.TextColumn("Obs", width="large")
             }
 
-            df_edit = st.data_editor(
-                df, 
-                key="editor_financeiro",
-                column_config=col_config,
-                num_rows="dynamic", 
-                use_container_width=True, 
-                hide_index=True
-            )
+            st.data_editor(df, key="editor_financeiro", column_config=col_config, num_rows="dynamic", use_container_width=True, hide_index=True)
             
             if st.button("💾 SALVAR TUDO NO GOOGLE SHEETS"):
-                atualizar_financeiro_completo(df_edit)
+                atualizar_financeiro_completo(st.session_state["editor_financeiro"])
                 st.success("Salvo com sucesso!")
                 st.rerun()
 
