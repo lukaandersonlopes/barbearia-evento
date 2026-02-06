@@ -5,10 +5,65 @@ import urllib.parse
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
-import os # <--- O QUE FALTAVA ESTÁ AQUI
+import os # IMPORTANTE: Mantido para não dar erro
 
-# --- CONFIGURAÇÃO INICIAL ---
+# --- CONFIGURAÇÃO INICIAL (LAYOUT WIDE) ---
 st.set_page_config(page_title="5 Anos Barbearia Vasques", layout="wide", page_icon="💈")
+
+# --- CSS PERSONALIZADO (A MÁGICA DO DESIGN) ---
+st.markdown("""
+<style>
+    /* Centraliza imagens */
+    .stImage {
+        display: flex;
+        justify-content: center;
+    }
+    
+    /* Estilo dos Cards de Atrações */
+    .card-container {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .card {
+        background-color: #262730; /* Cor de fundo do card (cinza escuro) */
+        border: 1px solid #E67E22; /* Borda laranja fina */
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        width: 32%; /* Ocupa 1/3 da linha */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        transition: transform 0.2s;
+    }
+    .card:hover {
+        transform: scale(1.05); /* Efeito de zoom leve ao passar o mouse */
+        border-color: #FF9F43;
+    }
+    .card-icon {
+        font-size: 2rem;
+        margin-bottom: 5px;
+        display: block;
+    }
+    .card-text {
+        color: #FFF;
+        font-weight: bold;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+    }
+    
+    /* Ajuste do Banner de Data */
+    .date-banner {
+        background: linear-gradient(90deg, #1E1E1E 0%, #2D2D2D 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        margin: 25px 0;
+        border-left: 5px solid #E67E22;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # --- CONFIGURAÇÕES DO DONO ---
 NOME_PLANILHA_GOOGLE = "Barbearia 5 Anos - Dados" 
@@ -27,12 +82,12 @@ def conectar_google_sheets():
         sheet = client.open(NOME_PLANILHA_GOOGLE).sheet1
         return sheet
     except Exception as e:
-        st.error(f"Erro de conexão: {e}")
+        st.error(f"Erro de conexão com Google Sheets: {e}")
         st.stop()
 
 def carregar_dados():
-    sheet = conectar_google_sheets()
     try:
+        sheet = conectar_google_sheets()
         dados = sheet.get_all_records()
         df = pd.DataFrame(dados)
     except:
@@ -40,18 +95,15 @@ def carregar_dados():
 
     colunas_padrao = ["Nome", "Telefone", "Quer_Camisa", "Tamanho_Camisa", "Data_Confirmacao", "Status_Pagamento", "Forma_Pagamento", "Parcelamento", "Valor_Ja_Pago", "Observacoes"]
     
-    # Se vier vazio ou faltar colunas, cria a estrutura
     if df.empty: 
         return pd.DataFrame(columns=colunas_padrao)
     
-    # Garante que todas as colunas existem
     for col in colunas_padrao:
         if col not in df.columns:
             df[col] = ""
 
-    # BLINDAGEM DE DADOS (Correção para evitar erros no Financeiro)
+    # BLINDAGEM DE DADOS (Correção de erros numéricos)
     if "Valor_Ja_Pago" in df.columns:
-        # Força conversão para texto primeiro, limpa R$, troca virgula por ponto
         df["Valor_Ja_Pago"] = df["Valor_Ja_Pago"].astype(str).str.replace('R$', '', regex=False).str.replace(',', '.', regex=False)
         df["Valor_Ja_Pago"] = pd.to_numeric(df["Valor_Ja_Pago"], errors='coerce').fillna(0.0)
     
@@ -73,46 +125,52 @@ def gerar_link_whatsapp(nome, quer_camisa, tamanho):
     mensagem = f"Fala Douglas! Aqui é o {nome}. Confirmo presença no dia 12/07! {texto_camisa}"
     return f"https://wa.me/{NUMERO_BARBEIRO}?text={urllib.parse.quote(mensagem)}"
 
-# --- INTERFACE (VISUAL NOVO) ---
-
+# --- INTERFACE (LAYOUT CENTRALIZADO) ---
+# Usamos colunas para focar o conteúdo no centro da tela (Mobile Friendly)
 col_vazia_esq, col_principal, col_vazia_dir = st.columns([1, 2, 1])
 
 with col_principal:
-    # 1. LOGO
+    # 1. LOGO (Centralizado via CSS e maior)
     if os.path.exists("logo.png"):
-        c1, c2, c3 = st.columns([1, 1, 1])
-        with c2:
-            st.image("logo.png", width=180)
+        st.image("logo.png", width=300) # AUMENTADO PARA 300px
     
     # 2. TÍTULOS
     st.markdown("""
-        <div style='text-align: center;'>
-            <h1 style='color: #E67E22; margin-bottom: 0; font-size: 2.5rem;'>5 ANOS DE HISTÓRIA</h1>
-            <h3 style='color: #555; margin-top: 5px;'>BARBEARIA VASQUES</h3>
+        <div style='text-align: center; margin-top: 10px;'>
+            <h1 style='color: #E67E22; margin: 0; font-size: 3rem; text-transform: uppercase;'>5 ANOS DE HISTÓRIA</h1>
+            <h3 style='color: #888; margin-top: 5px; letter-spacing: 2px;'>BARBEARIA VASQUES</h3>
         </div>
     """, unsafe_allow_html=True)
 
-    # 3. BANNER DE DATA
+    # 3. BANNER DE DATA (Novo Design)
     dias_restantes = (DATA_EVENTO - date.today()).days
     st.markdown(f"""
-        <div style='background-color: #333; color: white; padding: 15px; border-radius: 10px; text-align: center; margin: 20px 0;'>
-            <h2 style='margin:0; font-size: 1.5rem;'>📅 DOMINGO, 12 DE JULHO</h2>
-            <p style='margin:5px 0 0 0; font-size: 0.9rem; color: #ddd;'>Faltam {dias_restantes} dias para a resenha!</p>
+        <div class="date-banner">
+            <h2 style='margin:0; font-size: 1.8rem;'>📅 DOMINGO, 12 DE JULHO</h2>
+            <p style='margin:10px 0 0 0; font-size: 1rem; color: #ccc;'>Faltam <b>{dias_restantes} dias</b> para a grande resenha!</p>
         </div>
     """, unsafe_allow_html=True)
 
-    # 4. ÍCONES
+    # 4. CARDS DE ATRAÇÕES (Aqui está a grande mudança!)
     st.markdown("""
-        <div style='display: flex; justify-content: space-around; text-align: center; margin-bottom: 20px; font-size: 1.1rem; color: #E67E22; font-weight: bold;'>
-            <span>☀️ Piscina</span>
-            <span>⚽️ Futebol</span>
-            <span>🍻 Chopp Gelado</span>
+        <div class="card-container">
+            <div class="card">
+                <span class="card-icon">☀️</span>
+                <span class="card-text">Piscina<br>Liberada</span>
+            </div>
+            <div class="card">
+                <span class="card-icon">⚽️</span>
+                <span class="card-text">Futebol<br>Society</span>
+            </div>
+            <div class="card">
+                <span class="card-icon">🍻</span>
+                <span class="card-text">Chopp<br>Gelado</span>
+            </div>
         </div>
-        <hr>
     """, unsafe_allow_html=True)
 
     # 5. MENSAGEM
-    st.info("**Você faz parte dessa história!** Esses 5 anos não existiriam sem você. Vamos comemorar juntos!")
+    st.info("🤝 **Você faz parte dessa história!** A Barbearia Vasques conta com sua presença para celebrar essa conquista.")
 
     # 6. AVISO FINANCEIRO
     st.markdown("""
@@ -157,7 +215,7 @@ with col_principal:
                 else:
                     st.error("Preencha todos os campos!")
 
-# --- ABA 2: FINANCEIRO ---
+# --- ABA 2: FINANCEIRO (FORA DA COLUNA PARA TER ESPAÇO) ---
 st.write("---")
 with aba_admin:
     col_vazia, col_senha, col_vazia2 = st.columns([1, 1, 1])
@@ -195,7 +253,6 @@ with aba_admin:
             
             st.caption("Qualquer alteração feita abaixo vai direto para o Google.")
             
-            # CONFIGURAÇÃO DE COLUNAS DO EDITOR
             col_config = {
                 "Nome": st.column_config.TextColumn("Nome", disabled=True),
                 "Quer_Camisa": st.column_config.TextColumn("Camisa?", disabled=True, width="small"),
