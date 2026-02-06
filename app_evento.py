@@ -5,6 +5,7 @@ import urllib.parse
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
+import os # <--- O QUE FALTAVA ESTÁ AQUI
 
 # --- CONFIGURAÇÃO INICIAL ---
 st.set_page_config(page_title="5 Anos Barbearia Vasques", layout="wide", page_icon="💈")
@@ -14,7 +15,7 @@ NOME_PLANILHA_GOOGLE = "Barbearia 5 Anos - Dados"
 SENHA_ADMIN = "barba123"
 NUMERO_BARBEIRO = "5519998057890"
 PRECO_CAMISA = 45.00
-DATA_EVENTO = date(2026, 7, 12) # Ano, Mês, Dia
+DATA_EVENTO = date(2026, 7, 12)
 
 # --- CONEXÃO COM GOOGLE SHEETS ---
 def conectar_google_sheets():
@@ -31,14 +32,29 @@ def conectar_google_sheets():
 
 def carregar_dados():
     sheet = conectar_google_sheets()
-    dados = sheet.get_all_records()
-    df = pd.DataFrame(dados)
+    try:
+        dados = sheet.get_all_records()
+        df = pd.DataFrame(dados)
+    except:
+        df = pd.DataFrame()
+
     colunas_padrao = ["Nome", "Telefone", "Quer_Camisa", "Tamanho_Camisa", "Data_Confirmacao", "Status_Pagamento", "Forma_Pagamento", "Parcelamento", "Valor_Ja_Pago", "Observacoes"]
-    if df.empty: return pd.DataFrame(columns=colunas_padrao)
     
+    # Se vier vazio ou faltar colunas, cria a estrutura
+    if df.empty: 
+        return pd.DataFrame(columns=colunas_padrao)
+    
+    # Garante que todas as colunas existem
+    for col in colunas_padrao:
+        if col not in df.columns:
+            df[col] = ""
+
+    # BLINDAGEM DE DADOS (Correção para evitar erros no Financeiro)
     if "Valor_Ja_Pago" in df.columns:
-        df["Valor_Ja_Pago"] = df["Valor_Ja_Pago"].astype(str).str.replace('R$', '').str.replace(',', '.').replace('', '0')
+        # Força conversão para texto primeiro, limpa R$, troca virgula por ponto
+        df["Valor_Ja_Pago"] = df["Valor_Ja_Pago"].astype(str).str.replace('R$', '', regex=False).str.replace(',', '.', regex=False)
         df["Valor_Ja_Pago"] = pd.to_numeric(df["Valor_Ja_Pago"], errors='coerce').fillna(0.0)
+    
     return df
 
 def salvar_novo_inscrito(novo_dado):
@@ -59,16 +75,14 @@ def gerar_link_whatsapp(nome, quer_camisa, tamanho):
 
 # --- INTERFACE (VISUAL NOVO) ---
 
-# Centralização do Layout (Truque para não ficar esticado no PC)
 col_vazia_esq, col_principal, col_vazia_dir = st.columns([1, 2, 1])
 
 with col_principal:
-    # 1. LOGO (Ajustado tamanho)
+    # 1. LOGO
     if os.path.exists("logo.png"):
-        # Usei colunas internas para centralizar a imagem perfeitamente
         c1, c2, c3 = st.columns([1, 1, 1])
         with c2:
-            st.image("logo.png", width=180) # TAMANHO REDUZIDO (Era gigante antes)
+            st.image("logo.png", width=180)
     
     # 2. TÍTULOS
     st.markdown("""
@@ -78,7 +92,7 @@ with col_principal:
         </div>
     """, unsafe_allow_html=True)
 
-    # 3. BANNER DE DATA (Novo!)
+    # 3. BANNER DE DATA
     dias_restantes = (DATA_EVENTO - date.today()).days
     st.markdown(f"""
         <div style='background-color: #333; color: white; padding: 15px; border-radius: 10px; text-align: center; margin: 20px 0;'>
@@ -87,7 +101,7 @@ with col_principal:
         </div>
     """, unsafe_allow_html=True)
 
-    # 4. ÍCONES DE LAZER (Voltaram!)
+    # 4. ÍCONES
     st.markdown("""
         <div style='display: flex; justify-content: space-around; text-align: center; margin-bottom: 20px; font-size: 1.1rem; color: #E67E22; font-weight: bold;'>
             <span>☀️ Piscina</span>
@@ -97,7 +111,7 @@ with col_principal:
         <hr>
     """, unsafe_allow_html=True)
 
-    # 5. MENSAGEM EMOCIONAL
+    # 5. MENSAGEM
     st.info("**Você faz parte dessa história!** Esses 5 anos não existiriam sem você. Vamos comemorar juntos!")
 
     # 6. AVISO FINANCEIRO
@@ -143,8 +157,7 @@ with col_principal:
                 else:
                     st.error("Preencha todos os campos!")
 
-# --- ABA 2: FINANCEIRO (FORA DA COLUNA CENTRAL PARA TER ESPAÇO) ---
-# Aqui usamos a largura total da tela para caber a tabela
+# --- ABA 2: FINANCEIRO ---
 st.write("---")
 with aba_admin:
     col_vazia, col_senha, col_vazia2 = st.columns([1, 1, 1])
@@ -181,7 +194,27 @@ with aba_admin:
             m2.metric("👥 Total Confirmados", qtd)
             
             st.caption("Qualquer alteração feita abaixo vai direto para o Google.")
-            df_edit = st.data_editor(df, num_rows="dynamic", use_container_width=True, hide_index=True)
+            
+            # CONFIGURAÇÃO DE COLUNAS DO EDITOR
+            col_config = {
+                "Nome": st.column_config.TextColumn("Nome", disabled=True),
+                "Quer_Camisa": st.column_config.TextColumn("Camisa?", disabled=True, width="small"),
+                "Tamanho_Camisa": st.column_config.SelectboxColumn("Tam.", options=["-", "P", "M", "G", "GG", "G1", "G2"], width="small"),
+                "Status_Pagamento": st.column_config.SelectboxColumn("Status", options=["Pendente", "Em Aberto", "Quitado"], required=True, width="medium"),
+                "Forma_Pagamento": st.column_config.SelectboxColumn("Forma", options=["-", "PIX", "Dinheiro", "Cartão Crédito", "Cartão Débito"], width="medium"),
+                "Parcelamento": st.column_config.SelectboxColumn("Vezes", options=["-", "À Vista", "2x", "3x", "4x"], width="small"),
+                "Valor_Ja_Pago": st.column_config.NumberColumn("Recebido (R$)", format="R$ %.2f", min_value=0, width="medium"),
+                "Observacoes": st.column_config.TextColumn("Obs", width="large")
+            }
+
+            df_edit = st.data_editor(
+                df, 
+                key="editor_financeiro",
+                column_config=col_config,
+                num_rows="dynamic", 
+                use_container_width=True, 
+                hide_index=True
+            )
             
             if st.button("💾 SALVAR TUDO NO GOOGLE SHEETS"):
                 atualizar_financeiro_completo(df_edit)
@@ -189,4 +222,4 @@ with aba_admin:
                 st.rerun()
 
         except Exception as e:
-            st.error(f"Erro: {e}")
+            st.error(f"Erro ao carregar tabela: {e}")
