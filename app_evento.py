@@ -1,41 +1,61 @@
 import streamlit as st
 import pandas as pd
-import os
 from datetime import datetime
 import urllib.parse
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+import json
 
 # --- CONFIGURAÇÃO INICIAL ---
 st.set_page_config(page_title="5 Anos - Financeiro", layout="wide", page_icon="💈")
 
-# --- CONFIGURAÇÕES DO DONO (EDITE AQUI) ---
-ARQUIVO_DADOS = 'lista_interessados.csv'
+# --- CONFIGURAÇÕES DO DONO ---
+# O NOME DA PLANILHA TEM QUE SER EXATO AO QUE ESTÁ NO GOOGLE
+NOME_PLANILHA_GOOGLE = 'Barbearia 5 Anos - Dados' 
 SENHA_ADMIN = "barba123"
-# TELEFONE ATUALIZADO (Sem traços ou espaços para o link funcionar)
-NUMERO_BARBEIRO = "5519998057890" 
+NUMERO_BARBEIRO = "5519998057890"
 PRECO_CAMISA = 45.00
 
-# --- FUNÇÕES (BACKEND) ---
+# --- CONEXÃO COM GOOGLE SHEETS (O COFRE) ---
+def conectar_google_sheets():
+    # Pega a chave que salvamos nos Secrets do Streamlit
+    try:
+        # Carrega o JSON que salvamos como texto nos Secrets
+        credenciais_dict = json.loads(st.secrets["GCP_KEY"])
+        
+        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(credenciais_dict, scope)
+        client = gspread.authorize(creds)
+        
+        # Tenta abrir a planilha
+        sheet = client.open(NOME_PLANILHA_GOOGLE).sheet1
+        return sheet
+    except Exception as e:
+        st.error(f"Erro ao conectar no Google Sheets: {e}")
+        st.stop()
+
+# --- FUNÇÕES (BACKEND BLINDADO) ---
 def carregar_dados():
+    sheet = conectar_google_sheets()
+    dados = sheet.get_all_records() # Baixa tudo da nuvem
+    
     colunas_padrao = [
         "Nome", "Telefone", "Quer_Camisa", "Tamanho_Camisa", "Data_Confirmacao", 
         "Status_Pagamento", "Forma_Pagamento", "Parcelamento", "Valor_Ja_Pago", "Observacoes"
     ]
     
-    if not os.path.exists(ARQUIVO_DADOS):
+    if not dados:
         return pd.DataFrame(columns=colunas_padrao)
     
-    try:
-        df = pd.read_csv(ARQUIVO_DADOS)
-    except:
-        return pd.DataFrame(columns=colunas_padrao)
+    df = pd.DataFrame(dados)
     
+    # Garante colunas faltantes
     for col in colunas_padrao:
         if col not in df.columns:
-            df[col] = "" 
-    
-    # --- FAXINA DE DADOS ---
+            df[col] = ""
+
+    # Faxina de Dados
     df["Valor_Ja_Pago"] = pd.to_numeric(df["Valor_Ja_Pago"], errors='coerce').fillna(0.0)
-    
     df["Status_Pagamento"] = df["Status_Pagamento"].fillna("Pendente").replace("", "Pendente")
     df["Forma_Pagamento"] = df["Forma_Pagamento"].fillna("-").replace("", "-")
     df["Parcelamento"] = df["Parcelamento"].fillna("-").replace("", "-")
@@ -44,22 +64,42 @@ def carregar_dados():
     
     return df
 
-def atualizar_lista_completa(df_novo):
-    df_novo.to_csv(ARQUIVO_DADOS, index=False)
-
 def salvar_novo_inscrito(novo_dado):
-    df = carregar_dados()
-    novo_dado["Status_Pagamento"] = "Pendente"
-    novo_dado["Forma_Pagamento"] = "-"
-    novo_dado["Parcelamento"] = "-"
-    novo_dado["Valor_Ja_Pago"] = 0.0
-    novo_dado["Observacoes"] = ""
+    sheet = conectar_google_sheets()
     
-    if "Tamanho_Camisa" not in novo_dado:
-        novo_dado["Tamanho_Camisa"] = "-"
+    # Prepara a linha na ordem correta das colunas (Importante para o Google Sheets)
+    # Ordem: Nome, Telefone, Quer_Camisa, Tamanho_Camisa, Data_Confirmacao, Status, Forma, Parcelamento, Valor, Obs
+    linha = [
+        novo_dado["Nome"],
+        novo_dado["Telefone"],
+        novo_dado["Quer_Camisa"],
+        novo_dado.get("Tamanho_Camisa", "-"),
+        novo_dado["Data_Confirmacao"],
+        "Pendente", # Status Pagamento
+        "-",        # Forma Pagamento
+        "-",        # Parcelamento
+        0.0,        # Valor Ja Pago
+        ""          # Observacoes
+    ]
     
-    df = pd.concat([df, pd.DataFrame([novo_dado])], ignore_index=True)
-    df.to_csv(ARQUIVO_DADOS, index=False)
+    # Se for o primeiro registro, cria o cabeçalho antes
+    registros = sheet.get_all_records()
+    if not registros:
+        cabecalho = [
+            "Nome", "Telefone", "Quer_Camisa", "Tamanho_Camisa", "Data_Confirmacao", 
+            "Status_Pagamento", "Forma_Pagamento", "Parcelamento", "Valor_Ja_Pago", "Observacoes"
+        ]
+        sheet.append_row(cabecalho)
+        
+    sheet.append_row(linha) # Adiciona na nuvem
+
+def atualizar_financeiro_completo(df_novo):
+    sheet = conectar_google_sheets()
+    sheet.clear() # Limpa a planilha velha
+    
+    # Prepara os dados para subir (Cabeçalho + Dados)
+    lista_dados = [df_novo.columns.values.tolist()] + df_novo.values.tolist()
+    sheet.update(lista_dados) # Sobe a nova
 
 def gerar_link_whatsapp(nome, quer_camisa, tamanho):
     if quer_camisa == "Sim":
@@ -83,7 +123,6 @@ with col_centro:
 
 st.info("**Você faz parte dessa história!** Esses 5 anos não existiriam sem você. Vamos comemorar!")
 
-# --- AVISO FINANCEIRO ATUALIZADO ---
 st.markdown("""
 <div style='background-color: #FFF3CD; padding: 15px; border-radius: 10px; border: 1px solid #FFEEBA; text-align: center; margin-bottom: 20px;'>
     <h4 style='color: #856404; margin:0; margin-bottom: 10px;'>⚠️ IMPORTANTE</h4>
@@ -109,7 +148,6 @@ with aba_convite:
         
         opcao_camisa = st.radio("Deseja a camisa?", ["Sim, quero a camisa!", "Não, apenas o evento."], index=None)
         
-        # Campo condicional de Tamanho
         tamanho_selecionado = "-"
         if opcao_camisa == "Sim, quero a camisa!":
             st.markdown("**Selecione o tamanho (Obrigatório):**")
@@ -119,10 +157,8 @@ with aba_convite:
             if nome and telefone and opcao_camisa:
                 status_camisa = "Sim" if "Sim" in opcao_camisa else "Não"
                 
-                # --- TRAVA DE SEGURANÇA (CONDICIONAL) ---
-                # Se disse SIM pra camisa, mas o tamanho continua "-", BLOQUEIA.
                 if status_camisa == "Sim" and tamanho_selecionado == "-":
-                     st.error("⚠️ ATENÇÃO: Você escolheu a camisa, mas não selecionou o tamanho. Por favor, escolha um tamanho para continuar.")
+                     st.error("⚠️ ATENÇÃO: Escolha o tamanho da camisa!")
                 else:
                     novo_registro = {
                         "Nome": nome, 
@@ -131,12 +167,13 @@ with aba_convite:
                         "Tamanho_Camisa": tamanho_selecionado, 
                         "Data_Confirmacao": datetime.now().strftime("%Y-%m-%d %H:%M")
                     }
-                    salvar_novo_inscrito(novo_registro)
-                    
-                    link_zap = gerar_link_whatsapp(nome, status_camisa, tamanho_selecionado)
-                    
-                    st.success(f"Show, {nome}! Registrado.")
-                    st.markdown(f'<a href="{link_zap}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px 20px; border-radius:5px; width:100%; font-weight:bold;">📲 AVISAR NO WHATSAPP</button></a>', unsafe_allow_html=True)
+                    try:
+                        salvar_novo_inscrito(novo_registro)
+                        link_zap = gerar_link_whatsapp(nome, status_camisa, tamanho_selecionado)
+                        st.success(f"Show, {nome}! Salvo na Nuvem com sucesso.")
+                        st.markdown(f'<a href="{link_zap}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:10px 20px; border-radius:5px; width:100%; font-weight:bold;">📲 AVISAR NO WHATSAPP</button></a>', unsafe_allow_html=True)
+                    except Exception as e:
+                        st.error(f"Erro ao salvar: {e}. Avise o administrador.")
             else:
                 st.error("Preencha todos os campos obrigatórios!")
 
@@ -146,8 +183,14 @@ with aba_admin:
     senha = st.text_input("Senha Admin", type="password")
     
     if senha == SENHA_ADMIN:
-        df = carregar_dados()
+        try:
+            df = carregar_dados()
+        except Exception as e:
+            st.error("Conecte a planilha do Google corretamente nos Secrets!")
+            st.stop()
+            
         st.divider()
+        st.caption("✅ Sistema Conectado ao Google Sheets (Dados Seguros)")
         
         st.subheader("1. Definição de Preço (Rateio)")
         col_custo1, col_custo2, col_result = st.columns(3)
@@ -183,8 +226,8 @@ with aba_admin:
         m2.metric("✅ Pessoas Quitadas", pagantes_quitados)
         m3.metric("📝 Total na Lista", total_pessoas)
 
-        st.write("### Lista de Convidados & Financeiro")
-        st.caption("Edite os pagamentos abaixo e clique em SALVAR no final.")
+        st.write("### Lista de Convidados & Financeiro (Google Sheets)")
+        st.caption("Edite abaixo e clique em SALVAR para atualizar a planilha oficial.")
         
         df_editavel = st.data_editor(
             df,
@@ -199,14 +242,15 @@ with aba_admin:
                 "Forma_Pagamento": st.column_config.SelectboxColumn("Forma", options=["-", "PIX", "Dinheiro", "Cartão Crédito", "Cartão Débito"], width="medium"),
                 "Parcelamento": st.column_config.SelectboxColumn("Vezes", options=["-", "À Vista", "2x", "3x", "4x"], width="small"),
                 "Valor_Ja_Pago": st.column_config.NumberColumn("Recebido (R$)", format="R$ %.2f", min_value=0, width="medium"),
-                "Observacoes": st.column_config.TextColumn("Obs (Ex: Pagou 1/3)", width="large")
+                "Observacoes": st.column_config.TextColumn("Obs", width="large")
             },
             hide_index=True
         )
 
-        if st.button("💾 SALVAR DADOS FINANCEIROS"):
-            atualizar_lista_completa(df_editavel)
-            st.success("Financeiro Atualizado com Sucesso!")
+        if st.button("💾 SALVAR DADOS NO GOOGLE SHEETS"):
+            with st.spinner("Salvando na nuvem..."):
+                atualizar_financeiro_completo(df_editavel)
+            st.success("Planilha Google atualizada com sucesso!")
             st.rerun()
 
     else:
