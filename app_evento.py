@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import os  # <--- O IMPORT QUE FALTAVA VOLTOU AQUI
 from datetime import datetime
 import urllib.parse
 import gspread
@@ -37,7 +38,10 @@ def conectar_google_sheets():
 # --- FUNÇÕES (BACKEND BLINDADO) ---
 def carregar_dados():
     sheet = conectar_google_sheets()
-    dados = sheet.get_all_records() # Baixa tudo da nuvem
+    try:
+        dados = sheet.get_all_records() # Baixa tudo da nuvem
+    except:
+        dados = []
     
     colunas_padrao = [
         "Nome", "Telefone", "Quer_Camisa", "Tamanho_Camisa", "Data_Confirmacao", 
