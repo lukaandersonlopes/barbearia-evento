@@ -70,7 +70,7 @@ NOME_PLANILHA_GOOGLE = "Barbearia 5 Anos - Dados"
 SENHA_ADMIN = "barba123"
 NUMERO_BARBEIRO = "5519998057890"
 PRECO_CAMISA = 45.00
-DATA_EVENTO = date(2026, 7, 12)
+DATA_EVENTO = date(2026, 7, 11)
 
 # --- FUNÇÃO PARA CENTRALIZAR IMAGEM (A Mágica) ---
 def get_base64_image(image_path):
@@ -280,4 +280,5 @@ with aba_admin:
 
         except Exception as e:
             st.error(f"Erro ao carregar tabela: {e}")
+
 
