@@ -155,7 +155,7 @@ with col_principal:
     dias_restantes = (DATA_EVENTO - date.today()).days
     st.markdown(f"""
         <div class="date-banner">
-            <h2 style='margin:0; font-size: 1.8rem;'>📅 DOMINGO, 12 DE JULHO</h2>
+            <h2 style='margin:0; font-size: 1.8rem;'>📅 SÁBADO, 11 DE JULHO</h2>
             <p style='margin:10px 0 0 0; font-size: 1rem; color: #ccc;'>Faltam <b>{dias_restantes} dias</b> para a grande resenha!</p>
         </div>
     """, unsafe_allow_html=True)
@@ -280,3 +280,4 @@ with aba_admin:
 
         except Exception as e:
             st.error(f"Erro ao carregar tabela: {e}")
+
