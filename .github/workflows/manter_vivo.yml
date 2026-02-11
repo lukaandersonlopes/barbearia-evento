@@ -1,17 +1,20 @@
-name: Robô Vigia da Barbearia
+name: Robô Vigia Agressivo
 on:
   schedule:
-    - cron: "*/20 * * * *" # Roda a cada 20 minutos
-  workflow_dispatch: # Permite rodar manualmente pra testar
+    - cron: "*/12 * * * *" # Roda a cada 12 minutos (segurança máxima)
+  workflow_dispatch:
 
 jobs:
   acordar_site:
     runs-on: ubuntu-latest
     steps:
-      - name: Bater na porta (Ignorando erros)
+      - name: Acesso Completo (Anti-Cache)
         run: |
-          # O comando curl -I apenas pede o cabeçalho do site
-          # O flag --max-time 10 evita que ele fique preso se o site demorar
-          # O flag || true garante que o GitHub sempre dê "Sucesso" (verde), mesmo se o site der erro 303
-          curl -I --max-time 10 -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" https://barbeariavasques.streamlit.app/ || true
-          echo "Bati na porta. O site deve ter acordado."
+          # Gera um número único baseado na hora atual para enganar o cache
+          TIMESTAMP=$(date +%s)
+          
+          # Baixa a página inteira com um parametro falso (?dummy=...)
+          # Isso obriga o servidor a processar a requisição do zero
+          curl -L --max-time 30 -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" "https://barbeariavasques.streamlit.app/?dummy=$TIMESTAMP" || true
+          
+          echo "Acesso realizado com parametro unico: $TIMESTAMP"
