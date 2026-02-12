@@ -1,66 +1,58 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, date
+from datetime import datetime, date, time
 import urllib.parse
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
 import os
-import base64 # Nova ferramenta para centralizar o logo
+import base64
+import streamlit.components.v1 as components # Necessário para o mapa
 
 # --- CONFIGURAÇÃO INICIAL ---
-st.set_page_config(page_title="5 Anos Barbearia Vasques", layout="wide", page_icon="💈")
+st.set_page_config(page_title="5 Anos Barbearia Vasques", layout="centered", page_icon="💈")
 
-# --- CSS PERSONALIZADO ---
+# --- CSS PERSONALIZADO (TURBINADO) ---
 st.markdown("""
 <style>
     /* Estilo dos Cards de Atrações */
     .card-container {
         display: flex;
-        justify-content: center; /* Centraliza os cards no container */
-        gap: 20px; /* Espaço entre os cards */
+        justify-content: center;
+        gap: 15px;
         margin-bottom: 20px;
+        flex-wrap: wrap;
     }
     .card {
         background-color: #262730;
         border: 1px solid #E67E22;
         border-radius: 10px;
-        padding: 20px;
+        padding: 15px;
         text-align: center;
-        width: 150px; /* Largura fixa para ficarem iguais */
+        width: 100px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         transition: transform 0.2s;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
     }
     .card:hover {
         transform: scale(1.05);
         border-color: #FF9F43;
     }
     .card-icon {
-        font-size: 2.5rem;
-        margin-bottom: 10px;
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 5px;
     }
     .card-text {
         color: #FFF;
         font-weight: bold;
-        font-size: 1rem;
+        font-size: 0.8rem;
         text-transform: uppercase;
-        line-height: 1.2;
     }
     
-    /* Banner de Data */
-    .date-banner {
-        background: linear-gradient(90deg, #1E1E1E 0%, #2D2D2D 100%);
-        color: white;
-        padding: 20px;
-        border-radius: 12px;
-        text-align: center;
-        margin: 25px 0;
-        border-left: 5px solid #E67E22;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    /* Melhoria nas Métricas (Contador) */
+    div[data-testid="stMetricValue"] {
+        font-size: 2rem;
+        color: #E67E22;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -72,7 +64,7 @@ NUMERO_BARBEIRO = "5519998057890"
 PRECO_CAMISA = 45.00
 DATA_EVENTO = date(2026, 7, 11)
 
-# --- FUNÇÃO PARA CENTRALIZAR IMAGEM (A Mágica) ---
+# --- FUNÇÃO PARA CENTRALIZAR IMAGEM ---
 def get_base64_image(image_path):
     with open(image_path, "rb") as img_file:
         return base64.b64encode(img_file.read()).decode()
@@ -124,108 +116,130 @@ def atualizar_financeiro_completo(df_editado):
 
 def gerar_link_whatsapp(nome, quer_camisa, tamanho):
     texto_camisa = f"e vou querer a CAMISA dos 5 Anos (Tamanho {tamanho})!" if quer_camisa == "Sim" else "sem a camisa por enquanto."
-    mensagem = f"Fala Douglas! Aqui é o {nome}. Confirmo presença no dia 12/07! {texto_camisa}"
+    mensagem = f"Fala Douglas! Aqui é o {nome}. Confirmo presença no dia 11/07! {texto_camisa}"
     return f"https://wa.me/{NUMERO_BARBEIRO}?text={urllib.parse.quote(mensagem)}"
 
 # --- INTERFACE ---
-col_vazia_esq, col_principal, col_vazia_dir = st.columns([1, 2, 1])
-
-with col_principal:
-    # 1. LOGO 100% CENTRALIZADO (Via HTML/Base64)
-    if os.path.exists("logo.png"):
-        img_base64 = get_base64_image("logo.png")
-        st.markdown(
-            f"""
-            <div style="display: flex; justify-content: center; margin-bottom: 20px;">
-                <img src="data:image/png;base64,{img_base64}" width="300" style="border-radius: 10px;">
-            </div>
-            """, 
-            unsafe_allow_html=True
-        )
-    
-    # 2. TÍTULOS
-    st.markdown("""
-        <div style='text-align: center;'>
-            <h1 style='color: #E67E22; margin: 0; font-size: 3rem; text-transform: uppercase;'>5 ANOS DE HISTÓRIA</h1>
-            <h3 style='color: #888; margin-top: 5px; letter-spacing: 2px;'>BARBEARIA VASQUES</h3>
+# 1. LOGO
+if os.path.exists("logo.png"):
+    img_base64 = get_base64_image("logo.png")
+    st.markdown(
+        f"""
+        <div style="display: flex; justify-content: center; margin-bottom: 10px;">
+            <img src="data:image/png;base64,{img_base64}" width="200" style="border-radius: 10px;">
         </div>
-    """, unsafe_allow_html=True)
+        """, 
+        unsafe_allow_html=True
+    )
 
-    # 3. BANNER DE DATA
-    dias_restantes = (DATA_EVENTO - date.today()).days
-    st.markdown(f"""
-        <div class="date-banner">
-            <h2 style='margin:0; font-size: 1.8rem;'>📅 SÁBADO, 11 DE JULHO</h2>
-            <p style='margin:10px 0 0 0; font-size: 1rem; color: #ccc;'>Faltam <b>{dias_restantes} dias</b> para a grande resenha!</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # 4. CARDS DE ATRAÇÕES (Atualizado: Só "Futebol")
-    st.markdown("""
-        <div class="card-container">
-            <div class="card">
-                <span class="card-icon">☀️</span>
-                <span class="card-text">Piscina<br>Liberada</span>
-            </div>
-            <div class="card">
-                <span class="card-icon">⚽️</span>
-                <span class="card-text">Futebol</span>
-            </div>
-            <div class="card">
-                <span class="card-icon">🍻</span>
-                <span class="card-text">Chopp<br>Gelado</span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # 5. MENSAGEM
-    st.info("🤝 **Você faz parte dessa história!** A Barbearia Vasques conta com sua presença para celebrar essa conquista.")
-
-    # 6. AVISO
-    st.markdown("""
-    <div style='background-color: #FFF3CD; padding: 15px; border-radius: 10px; border: 1px solid #FFEEBA; text-align: center; margin-bottom: 20px;'>
-        <h4 style='color: #856404; margin:0 0 10px 0;'>⚠️ IMPORTANTE</h4>
-        <p style='color: #856404; font-size: 16px; line-height: 1.5; margin: 0;'>
-            O valor da participação depende do número de confirmados. 
-            Entrarei em contato assim que tiver a confirmação de todos vocês para fazer a divisão correta do valor.
-        </p>
+# 2. TÍTULOS
+st.markdown("""
+    <div style='text-align: center;'>
+        <h1 style='color: #E67E22; margin: 0; font-size: 2.5rem; text-transform: uppercase;'>5 ANOS DE HISTÓRIA</h1>
+        <h3 style='color: #888; margin-top: 5px; letter-spacing: 2px; font-size: 1rem;'>BARBEARIA VASQUES</h3>
     </div>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-    # --- ABAS ---
-    aba_convite, aba_admin = st.tabs(["✅ Confirmar Presença", "🔒 Gestão & Financeiro"])
+st.write("---")
 
-    # --- ABA 1: CONVITE ---
-    with aba_convite:
-        st.write("### Garanta seu lugar")
-        with st.form("form_interesse"):
-            nome = st.text_input("Nome Completo")
-            telefone = st.text_input("WhatsApp (com DDD)")
-            
-            st.markdown(f"#### 👕 Camisa Comemorativa (Aprox. R$ {PRECO_CAMISA:.2f})")
-            opcao_camisa = st.radio("Deseja a camisa?", ["Sim, quero a camisa!", "Não, apenas o evento."], index=None)
-            
-            tamanho_selecionado = "-"
-            if opcao_camisa == "Sim, quero a camisa!":
-                st.markdown("**Selecione o tamanho (Obrigatório):**")
-                tamanho_selecionado = st.selectbox("Qual o tamanho?", ["-", "P", "M", "G", "GG", "G1", "G2"], index=0)
-            
-            if st.form_submit_button("Confirmar Presença"):
-                if nome and telefone and opcao_camisa:
-                    status_camisa = "Sim" if "Sim" in opcao_camisa else "Não"
-                    if status_camisa == "Sim" and tamanho_selecionado == "-":
-                         st.error("⚠️ ATENÇÃO: Escolha o tamanho da camisa!")
-                    else:
-                        novo = {"Nome": nome, "Telefone": telefone, "Quer_Camisa": status_camisa, "Tamanho_Camisa": tamanho_selecionado, "Data_Confirmacao": datetime.now().strftime("%d/%m/%Y %H:%M")}
-                        salvar_novo_inscrito(novo)
-                        link = gerar_link_whatsapp(nome, status_camisa, tamanho_selecionado)
-                        st.success(f"Show, {nome}! Seus dados foram salvos.")
-                        st.markdown(f'<a href="{link}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:12px; border-radius:8px; width:100%; font-weight:bold; font-size:16px;">📲 AVISAR NO WHATSAPP</button></a>', unsafe_allow_html=True)
+# 3. NOVIDADE: CONTADOR PAINEL DE CONTROLE ⏳
+agora = datetime.now()
+data_festa_dt = datetime.combine(DATA_EVENTO, time(13, 0)) # Define a festa as 13h
+diferenca = data_festa_dt - agora
+
+if diferenca.total_seconds() > 0:
+    dias = diferenca.days
+    horas = diferenca.seconds // 3600
+    minutos = (diferenca.seconds // 60) % 60
+    
+    st.subheader("⏳ CONTAGEM REGRESSIVA")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("DIAS", dias)
+    col2.metric("HORAS", horas)
+    col3.metric("MINUTOS", minutos)
+else:
+    st.success("🎉 É HOJE! O CHURRASCO TÁ ON!")
+
+st.write("---")
+
+# 4. CARDS DE ATRAÇÕES
+st.markdown("""
+    <div class="card-container">
+        <div class="card">
+            <span class="card-icon">☀️</span>
+            <span class="card-text">Piscina<br>Liberada</span>
+        </div>
+        <div class="card">
+            <span class="card-icon">⚽️</span>
+            <span class="card-text">Futebol</span>
+        </div>
+        <div class="card">
+            <span class="card-icon">🍻</span>
+            <span class="card-text">Chopp<br>Gelado</span>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+
+# 5. NOVIDADE: MAPA DO GOOGLE (ATUALIZADO) 📍
+st.subheader("📍 ONDE VAI SER?")
+st.caption("Recanto dos Colibris, Rua 5 Quadra B Lote 06")
+
+# Mapa incorporado com 100% de largura para ficar bom no celular
+mapa_html = """
+<iframe src="https://www.google.com/maps/embed?pb=!1m17!1m12!1m3!1d3698.0020605543564!2d-47.47379682471459!3d-22.04951667986774!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m2!1m1!2zMjLCsDAyJzU4LjMiUyA0N8KwMjgnMTYuNCJX!5e0!3m2!1spt-BR!2sbr!4v1770915445016!5m2!1spt-BR!2sbr" width="100%" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+"""
+components.html(mapa_html, height=450)
+
+st.info("🤝 **Você faz parte dessa história!** Contamos com sua presença.")
+
+# 6. AVISO
+st.markdown("""
+<div style='background-color: #FFF3CD; padding: 15px; border-radius: 10px; border: 1px solid #FFEEBA; text-align: center; margin-bottom: 20px;'>
+    <h4 style='color: #856404; margin:0 0 10px 0;'>⚠️ IMPORTANTE</h4>
+    <p style='color: #856404; font-size: 14px; line-height: 1.5; margin: 0;'>
+        O valor da participação depende do número de confirmados. 
+        Entrarei em contato para fazer a divisão correta.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+# --- ABAS ---
+aba_convite, aba_admin = st.tabs(["✅ Confirmar Presença", "🔒 Gestão & Financeiro"])
+
+# --- ABA 1: CONVITE ---
+with aba_convite:
+    st.write("### Garanta seu lugar")
+    with st.form("form_interesse"):
+        nome = st.text_input("Nome Completo")
+        telefone = st.text_input("WhatsApp (com DDD)")
+        
+        st.markdown(f"#### 👕 Camisa Comemorativa (Aprox. R$ {PRECO_CAMISA:.2f})")
+        opcao_camisa = st.radio("Deseja a camisa?", ["Sim, quero a camisa!", "Não, apenas o evento."], index=None)
+        
+        tamanho_selecionado = "-"
+        if opcao_camisa == "Sim, quero a camisa!":
+            st.markdown("**Selecione o tamanho (Obrigatório):**")
+            tamanho_selecionado = st.selectbox("Qual o tamanho?", ["-", "P", "M", "G", "GG", "G1", "G2"], index=0)
+        
+        if st.form_submit_button("Confirmar Presença"):
+            if nome and telefone and opcao_camisa:
+                status_camisa = "Sim" if "Sim" in opcao_camisa else "Não"
+                if status_camisa == "Sim" and tamanho_selecionado == "-":
+                     st.error("⚠️ ATENÇÃO: Escolha o tamanho da camisa!")
                 else:
-                    st.error("Preencha todos os campos!")
+                    novo = {"Nome": nome, "Telefone": telefone, "Quer_Camisa": status_camisa, "Tamanho_Camisa": tamanho_selecionado, "Data_Confirmacao": datetime.now().strftime("%d/%m/%Y %H:%M")}
+                    salvar_novo_inscrito(novo)
+                    
+                    # NOVIDADE: CHUVA DE BALÕES 🎈
+                    st.balloons()
+                    
+                    link = gerar_link_whatsapp(nome, status_camisa, tamanho_selecionado)
+                    st.success(f"Show, {nome}! Seus dados foram salvos.")
+                    st.markdown(f'<a href="{link}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:12px; border-radius:8px; width:100%; font-weight:bold; font-size:16px;">📲 AVISAR NO WHATSAPP</button></a>', unsafe_allow_html=True)
+            else:
+                st.error("Preencha todos os campos!")
 
 # --- ABA 2: FINANCEIRO ---
-st.write("---")
 with aba_admin:
     col_vazia, col_senha, col_vazia2 = st.columns([1, 1, 1])
     with col_senha:
@@ -280,5 +294,3 @@ with aba_admin:
 
         except Exception as e:
             st.error(f"Erro ao carregar tabela: {e}")
-
-
