@@ -7,15 +7,14 @@ from oauth2client.service_account import ServiceAccountCredentials
 import json
 import os
 import base64
-import streamlit.components.v1 as components # Necessário para o mapa
+import streamlit.components.v1 as components
 
 # --- CONFIGURAÇÃO INICIAL ---
 st.set_page_config(page_title="5 Anos Barbearia Vasques", layout="centered", page_icon="💈")
 
-# --- CSS PERSONALIZADO (VOLTANDO AO CLÁSSICO) ---
+# --- CSS PERSONALIZADO ---
 st.markdown("""
 <style>
-    /* Estilo dos Cards de Atrações */
     .card-container {
         display: flex;
         justify-content: center;
@@ -48,8 +47,6 @@ st.markdown("""
         font-size: 0.8rem;
         text-transform: uppercase;
     }
-    
-    /* Banner de Data (Estilo Restaurado) */
     .date-banner {
         background: linear-gradient(90deg, #1E1E1E 0%, #2D2D2D 100%);
         color: white;
@@ -125,9 +122,15 @@ def gerar_link_whatsapp(nome, quer_camisa, tamanho):
     mensagem = f"Fala Douglas! Aqui é o {nome}. Confirmo presença no dia 11/07! {texto_camisa}"
     return f"https://wa.me/{NUMERO_BARBEIRO}?text={urllib.parse.quote(mensagem)}"
 
+# --- CONTROLE DE SESSÃO (EVITAR DUPLICADOS) ---
+if 'inscricao_feita' not in st.session_state:
+    st.session_state['inscricao_feita'] = False
+    st.session_state['nome_salvo'] = ""
+    st.session_state['link_zap'] = ""
+
 # --- INTERFACE ---
 
-# 1. LOGO (NO TOPO E DESTAQUE)
+# 1. LOGO
 if os.path.exists("logo.png"):
     img_base64 = get_base64_image("logo.png")
     st.markdown(
@@ -147,7 +150,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# 3. BANNER DE DATA (CONTADOR INTELIGENTE)
+# 3. BANNER DE DATA
 dias_restantes = (DATA_EVENTO - date.today()).days
 
 if dias_restantes > 0:
@@ -200,37 +203,54 @@ aba_convite, aba_admin = st.tabs(["✅ Confirmar Presença", "🔒 Gestão & Fin
 
 # --- ABA 1: CONVITE ---
 with aba_convite:
-    st.write("### Garanta seu lugar")
-    with st.form("form_interesse", clear_on_submit=True):
-        nome = st.text_input("Nome Completo")
-        telefone = st.text_input("WhatsApp (com DDD)")
-        
-        st.markdown(f"#### 👕 Camisa Comemorativa (Aprox. R$ {PRECO_CAMISA:.2f})")
-        opcao_camisa = st.radio("Deseja a camisa?", ["Sim, quero a camisa!", "Não, apenas o evento."], index=None)
-        
-        tamanho_selecionado = None
-        if opcao_camisa == "Sim, quero a camisa!":
-            st.markdown("**Selecione o tamanho (Obrigatório):**")
-            tamanho_selecionado = st.selectbox("Qual o tamanho?", ["P", "M", "G", "GG", "G1", "G2"], index=None, placeholder="Escolha um tamanho...")
-        
-        if st.form_submit_button("Confirmar Presença"):
-            if nome and telefone and opcao_camisa:
-                status_camisa = "Sim" if "Sim" in opcao_camisa else "Não"
-                if status_camisa == "Sim" and tamanho_selecionado is None:
-                     st.error("⚠️ ATENÇÃO: Escolha o tamanho da camisa!")
+    # Se o cara ainda não se inscreveu, mostra o formulário
+    if not st.session_state['inscricao_feita']:
+        st.write("### Garanta seu lugar")
+        with st.form("form_interesse", clear_on_submit=True):
+            nome = st.text_input("Nome Completo")
+            # Adicionado máscara visual e limite de caracteres
+            telefone = st.text_input("WhatsApp (com DDD)", max_chars=15, placeholder="(11) 99999-9999")
+            
+            st.markdown(f"#### 👕 Camisa Comemorativa (Aprox. R$ {PRECO_CAMISA:.2f})")
+            opcao_camisa = st.radio("Deseja a camisa?", ["Sim, quero a camisa!", "Não, apenas o evento."], index=None)
+            
+            tamanho_selecionado = None
+            if opcao_camisa == "Sim, quero a camisa!":
+                st.markdown("**Selecione o tamanho (Obrigatório):**")
+                tamanho_selecionado = st.selectbox("Qual o tamanho?", ["P", "M", "G", "GG", "G1", "G2"], index=None, placeholder="Escolha um tamanho...")
+            
+            if st.form_submit_button("Confirmar Presença"):
+                if nome and telefone and opcao_camisa:
+                    status_camisa = "Sim" if "Sim" in opcao_camisa else "Não"
+                    if status_camisa == "Sim" and tamanho_selecionado is None:
+                         st.error("⚠️ ATENÇÃO: Escolha o tamanho da camisa!")
+                    else:
+                        tamanho_final = tamanho_selecionado if tamanho_selecionado else "-"
+                        novo = {"Nome": nome, "Telefone": telefone, "Quer_Camisa": status_camisa, "Tamanho_Camisa": tamanho_final, "Data_Confirmacao": datetime.now().strftime("%d/%m/%Y %H:%M")}
+                        
+                        # Spinner de carregamento elegante
+                        with st.spinner('Salvando sua confirmação na lista...'):
+                            salvar_novo_inscrito(novo)
+                            
+                        # Salva na memória que deu certo e atualiza a tela
+                        st.session_state['inscricao_feita'] = True
+                        st.session_state['nome_salvo'] = nome
+                        st.session_state['link_zap'] = gerar_link_whatsapp(nome, status_camisa, tamanho_final)
+                        st.rerun()
                 else:
-                    tamanho_final = tamanho_selecionado if tamanho_selecionado else "-"
-                    novo = {"Nome": nome, "Telefone": telefone, "Quer_Camisa": status_camisa, "Tamanho_Camisa": tamanho_final, "Data_Confirmacao": datetime.now().strftime("%d/%m/%Y %H:%M")}
-                    salvar_novo_inscrito(novo)
+                    st.error("Preencha todos os campos!")
                     
-                    # CHUVA DE BALÕES 🎈
-                    st.balloons()
-                    
-                    link = gerar_link_whatsapp(nome, status_camisa, tamanho_final)
-                    st.success(f"Show, {nome}! Seus dados foram salvos.")
-                    st.markdown(f'<a href="{link}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:12px; border-radius:8px; width:100%; font-weight:bold; font-size:16px;">📲 AVISAR NO WHATSAPP</button></a>', unsafe_allow_html=True)
-            else:
-                st.error("Preencha todos os campos!")
+    # Se ele já se inscreveu, esconde o formulário e mostra só o sucesso
+    else:
+        st.balloons()
+        st.success(f"Show, {st.session_state['nome_salvo']}! Seus dados foram salvos com sucesso na nossa lista.")
+        st.markdown(f'<a href="{st.session_state["link_zap"]}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:12px; border-radius:8px; width:100%; font-weight:bold; font-size:16px;">📲 AVISAR NO WHATSAPP</button></a>', unsafe_allow_html=True)
+        
+        # Botão caso ele queira inscrever outra pessoa no mesmo celular
+        if st.button("Inscrever outra pessoa"):
+            st.session_state['inscricao_feita'] = False
+            st.rerun()
+
 
 # --- ABA 2: FINANCEIRO ---
 with aba_admin:
@@ -288,12 +308,11 @@ with aba_admin:
         except Exception as e:
             st.error(f"Erro ao carregar tabela: {e}")
 
-# --- RODAPÉ COM O MAPA (AGORA AQUI EMBAIXO) ---
+# --- RODAPÉ COM O MAPA ---
 st.write("---")
 st.subheader("📍 COMO CHEGAR?")
 st.caption("Recanto dos Colibris, Rua 5 Quadra B Lote 06")
 
-# Mapa incorporado com 100% de largura
 mapa_html = """
 <iframe src="https://www.google.com/maps/embed?pb=!1m17!1m12!1m3!1d3698.0020605543564!2d-47.47379682471459!3d-22.04951667986774!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m2!1m1!2zMjLCsDAyJzU4LjMiUyA0N8KwMjgnMTYuNCJX!5e0!3m2!1spt-BR!2sbr!4v1770915445016!5m2!1spt-BR!2sbr" width="100%" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
 """
