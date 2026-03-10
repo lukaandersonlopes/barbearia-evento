@@ -147,12 +147,20 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# 3. BANNER DE DATA (VOLTOU AO ORIGINAL)
+# 3. BANNER DE DATA (CONTADOR INTELIGENTE)
 dias_restantes = (DATA_EVENTO - date.today()).days
+
+if dias_restantes > 0:
+    texto_contador = f"<p style='margin:5px 0 0 0; font-size: 0.9rem; color: #ccc;'>Faltam <b>{dias_restantes} dias</b> para a grande resenha!</p>"
+elif dias_restantes == 0:
+    texto_contador = f"<p style='margin:5px 0 0 0; font-size: 1.1rem; color: #E67E22;'>🔥 <b>É HOJE!</b> Vamos celebrar juntos os 5 anos da Barbearia Vasques!</p>"
+else:
+    texto_contador = f"<p style='margin:5px 0 0 0; font-size: 0.9rem; color: #ccc;'>🎉 <b>O evento já rolou!</b> Obrigado a todos que participaram.</p>"
+
 st.markdown(f"""
     <div class="date-banner">
         <h2 style='margin:0; font-size: 1.5rem;'>📅 SÁBADO, 11 DE JULHO</h2>
-        <p style='margin:5px 0 0 0; font-size: 0.9rem; color: #ccc;'>Faltam <b>{dias_restantes} dias</b> para a grande resenha!</p>
+        {texto_contador}
     </div>
 """, unsafe_allow_html=True)
 
@@ -193,31 +201,32 @@ aba_convite, aba_admin = st.tabs(["✅ Confirmar Presença", "🔒 Gestão & Fin
 # --- ABA 1: CONVITE ---
 with aba_convite:
     st.write("### Garanta seu lugar")
-    with st.form("form_interesse"):
+    with st.form("form_interesse", clear_on_submit=True):
         nome = st.text_input("Nome Completo")
         telefone = st.text_input("WhatsApp (com DDD)")
         
         st.markdown(f"#### 👕 Camisa Comemorativa (Aprox. R$ {PRECO_CAMISA:.2f})")
         opcao_camisa = st.radio("Deseja a camisa?", ["Sim, quero a camisa!", "Não, apenas o evento."], index=None)
         
-        tamanho_selecionado = "-"
+        tamanho_selecionado = None
         if opcao_camisa == "Sim, quero a camisa!":
             st.markdown("**Selecione o tamanho (Obrigatório):**")
-            tamanho_selecionado = st.selectbox("Qual o tamanho?", ["-", "P", "M", "G", "GG", "G1", "G2"], index=0)
+            tamanho_selecionado = st.selectbox("Qual o tamanho?", ["P", "M", "G", "GG", "G1", "G2"], index=None, placeholder="Escolha um tamanho...")
         
         if st.form_submit_button("Confirmar Presença"):
             if nome and telefone and opcao_camisa:
                 status_camisa = "Sim" if "Sim" in opcao_camisa else "Não"
-                if status_camisa == "Sim" and tamanho_selecionado == "-":
+                if status_camisa == "Sim" and tamanho_selecionado is None:
                      st.error("⚠️ ATENÇÃO: Escolha o tamanho da camisa!")
                 else:
-                    novo = {"Nome": nome, "Telefone": telefone, "Quer_Camisa": status_camisa, "Tamanho_Camisa": tamanho_selecionado, "Data_Confirmacao": datetime.now().strftime("%d/%m/%Y %H:%M")}
+                    tamanho_final = tamanho_selecionado if tamanho_selecionado else "-"
+                    novo = {"Nome": nome, "Telefone": telefone, "Quer_Camisa": status_camisa, "Tamanho_Camisa": tamanho_final, "Data_Confirmacao": datetime.now().strftime("%d/%m/%Y %H:%M")}
                     salvar_novo_inscrito(novo)
                     
                     # CHUVA DE BALÕES 🎈
                     st.balloons()
                     
-                    link = gerar_link_whatsapp(nome, status_camisa, tamanho_selecionado)
+                    link = gerar_link_whatsapp(nome, status_camisa, tamanho_final)
                     st.success(f"Show, {nome}! Seus dados foram salvos.")
                     st.markdown(f'<a href="{link}" target="_blank"><button style="background-color:#25D366; color:white; border:none; padding:12px; border-radius:8px; width:100%; font-weight:bold; font-size:16px;">📲 AVISAR NO WHATSAPP</button></a>', unsafe_allow_html=True)
             else:
