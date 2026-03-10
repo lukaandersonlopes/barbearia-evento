@@ -266,7 +266,7 @@ with aba_admin:
             
             st.subheader("1. Definição de Preço (Rateio)")
             c1, c2, c3 = st.columns(3)
-            custo_tot = c1.number_input("Custo Total (Chácara + Bebida)", value=1800.0)
+            custo_tot = c1.number_input("Custo Total (Chácara + Bebida)", value=2100.0)
             qtd = len(df)
             if qtd > 0: c3.metric("Custo por Pessoa", f"R$ {(custo_tot/qtd):.2f}")
             else: c3.warning("Sem inscritos")
@@ -317,3 +317,4 @@ mapa_html = """
 <iframe src="https://www.google.com/maps/embed?pb=!1m17!1m12!1m3!1d3698.0020605543564!2d-47.47379682471459!3d-22.04951667986774!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m2!1m1!2zMjLCsDAyJzU4LjMiUyA0N8KwMjgnMTYuNCJX!5e0!3m2!1spt-BR!2sbr!4v1770915445016!5m2!1spt-BR!2sbr" width="100%" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
 """
 components.html(mapa_html, height=450)
+
