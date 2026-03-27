@@ -64,7 +64,7 @@ st.markdown("""
 NOME_PLANILHA_GOOGLE = "Barbearia 5 Anos - Dados" 
 SENHA_ADMIN = "barba123"
 NUMERO_BARBEIRO = "5519998057890"
-PRECO_CAMISA = 45.00
+PRECO_CAMISA = 55.00  # <-- PREÇO ATUALIZADO AQUI
 DATA_EVENTO = date(2026, 7, 11)
 
 # --- FUNÇÃO PARA CENTRALIZAR IMAGEM ---
@@ -187,13 +187,13 @@ st.markdown("""
 
 st.info("🤝 **Você faz parte dessa história!** Contamos com sua presença.")
 
-# 5. AVISO
+# 5. AVISO - ATUALIZADO PELO DOUGLAS
 st.markdown("""
 <div style='background-color: #FFF3CD; padding: 15px; border-radius: 10px; border: 1px solid #FFEEBA; text-align: center; margin-bottom: 20px;'>
-    <h4 style='color: #856404; margin:0 0 10px 0;'>⚠️ IMPORTANTE</h4>
-    <p style='color: #856404; font-size: 14px; line-height: 1.5; margin: 0;'>
-        O valor da participação depende do número de confirmados. 
-        Entrarei em contato para fazer a divisão correta.
+    <h4 style='color: #856404; margin:0 0 10px 0;'>🚨 AVISO IMPORTANTE: INGRESSO OBRIGATÓRIO</h4>
+    <p style='color: #856404; font-size: 15px; line-height: 1.5; margin: 0;'>
+        Para manter a exclusividade da nossa festa, a entrada será permitida <b>apenas com a apresentação do ingresso físico</b>.<br>
+        Após confirmar sua presença aqui, não esqueça de <b>passar na Barbearia Vasques para retirar o seu</b> com o Douglas!
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -208,7 +208,6 @@ with aba_convite:
         st.write("### Garanta seu lugar")
         with st.form("form_interesse", clear_on_submit=True):
             nome = st.text_input("Nome Completo")
-            # Adicionado máscara visual e limite de caracteres
             telefone = st.text_input("WhatsApp (com DDD)", max_chars=15, placeholder="(11) 99999-9999")
             
             st.markdown(f"#### 👕 Camisa Comemorativa (Aprox. R$ {PRECO_CAMISA:.2f})")
@@ -266,7 +265,7 @@ with aba_admin:
             
             st.subheader("1. Definição de Preço (Rateio)")
             c1, c2, c3 = st.columns(3)
-            custo_tot = c1.number_input("Custo Total (Chácara + Bebida)", value=2100.0)
+            custo_tot = c1.number_input("Custo Total (Chácara + Bebida)", value=1800.0)
             qtd = len(df)
             if qtd > 0: c3.metric("Custo por Pessoa", f"R$ {(custo_tot/qtd):.2f}")
             else: c3.warning("Sem inscritos")
@@ -317,4 +316,3 @@ mapa_html = """
 <iframe src="https://www.google.com/maps/embed?pb=!1m17!1m12!1m3!1d3698.0020605543564!2d-47.47379682471459!3d-22.04951667986774!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m2!1m1!2zMjLCsDAyJzU4LjMiUyA0N8KwMjgnMTYuNCJX!5e0!3m2!1spt-BR!2sbr!4v1770915445016!5m2!1spt-BR!2sbr" width="100%" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
 """
 components.html(mapa_html, height=450)
-
